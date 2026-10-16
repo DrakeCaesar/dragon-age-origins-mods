@@ -92,7 +92,7 @@ $expected = @{
     'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
     'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
     'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
-    'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs')
+    'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec')
     'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
 }
 foreach ($rel in $expected.Keys) {

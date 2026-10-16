@@ -77,10 +77,10 @@ change that for level-up mode only:
 
 - owned abilities become clickable, and unlearnable
 - an existing specialization can be removed, refunding the specialization point
-- attributes are seeded from the character's current values, so the minus
-  buttons work on points spent long ago
 - an ability cannot be unlearned while something owned still depends on it
 - an attribute cannot be lowered below a requirement an owned ability has
+- a specialization cannot be removed while a talent or spell it unlocks is
+  still picked
 - panes no longer revert when you navigate backwards
 
 Everything is scoped to `bLevelUp`, so character creation behaves exactly as

@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/SpellsTalentsScene.as b/scripts/__Packages/SpellsTalentsScene.as
-index 87070ca..3805eb2 100644
+index 87070ca..19afb9d 100644
 --- a/scripts/__Packages/SpellsTalentsScene.as
 +++ b/scripts/__Packages/SpellsTalentsScene.as
 @@ -20,6 +20,8 @@ class SpellsTalentsScene extends AbilityScene
@@ -24,6 +24,24 @@ index 87070ca..3805eb2 100644
        _root.SpellsTalents_header_mc_init = function()
        {
           if(SpellsTalentsScene.nType == CharGen.SPELLS)
+@@ -232,7 +240,7 @@ class SpellsTalentsScene extends AbilityScene
+       }
+       else
+       {
+-         AbilityScene.ResetPoints(SpellsTalentsScene,false);
++         AbilityScene.RevertPoints(SpellsTalentsScene,false);
+          SceneManager.PlayScene("Skills");
+       }
+    }
+@@ -278,7 +286,7 @@ class SpellsTalentsScene extends AbilityScene
+             }
+          }
+       }
+-      if(!SpellsTalentsScene.bWeHadPointsInitially)
++      if(!SpellsTalentsScene.bWeHadPointsInitially && !SpellsTalentsScene.bLevelUp)
+       {
+          SpellsTalentsScene.SkipScene();
+       }
 @@ -292,13 +300,13 @@ class SpellsTalentsScene extends AbilityScene
     }
     static function Unlearn(a_mcAbility)

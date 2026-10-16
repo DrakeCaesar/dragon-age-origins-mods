@@ -1,20 +1,23 @@
-<#
+﻿<#
 .SYNOPSIS
-    Rebuilds ui\levelup.swf: the vanilla level-up movie with the ActionScript
-    patches in ui\patches applied.
+    Rebuilds ui\levelup.swf from the pinned base export plus ui\patches.
 
 .DESCRIPTION
-    1. exports the movie's ActionScript with FFDec into a scratch tree
-    2. applies every patch in ui\patches (git apply, -p1)
-    3. re-imports the scripts into the movie to produce the patched .swf
+    FFDec's script export is NOT deterministic -- exporting the same movie
+    twice can differ by injected `var` declarations. Patches are therefore
+    generated against, and applied to, one pinned export (ui\_base) instead of
+    a fresh one, so the build stays reproducible.
 
-    The unpatched vanilla movie is deliberately NOT stored in this repo -- it
-    is BioWare's. Pass its path with -Vanilla. It can be extracted from
-    guiexport.erf in the game install (it is a headerless SWF; prepending an
-    8-byte "FWS" + length + rect header makes it parseable by FFDec).
+    1. copies ui\_base (the pinned pristine export) to ui\_build
+    2. applies every patch in ui\patches
+    3. verifies the expected edits are present in the result
+    4. imports the patched scripts into the movie
+
+    Run ui\make-patches.ps1 -Refresh to (re)create ui\_base.
 
 .PARAMETER Vanilla
-    Path to the unpatched vanilla level-up SWF.
+    The unpatched vanilla movie, used as the import source. It is BioWare's
+    and is deliberately not stored in this repo.
 
 .PARAMETER FfdecJar
     Path to ffdec.jar (JPEXS Free Flash Decompiler).
@@ -26,7 +29,7 @@
     Where to write the patched movie. Default: ui\levelup.swf
 
 .EXAMPLE
-    powershell -File ui\build-movie.ps1
+    powershell -File ui\build-movie.ps1 -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
 #>
 [CmdletBinding()]
 param(
@@ -38,33 +41,32 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# $PSScriptRoot is not populated while parameters are being bound under
-# PowerShell 5.1, so resolve the defaults here instead.
 $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
 if (-not $Vanilla)  { $Vanilla  = Join-Path $here 'vanilla_levelup.swf' }
 if (-not $FfdecJar) { $FfdecJar = Join-Path $env:TEMP 'ffdec\ffdec.jar' }
 if (-not $Out)      { $Out      = Join-Path $here 'levelup.swf' }
 
-$patches = Join-Path $here 'patches'
-$stage   = Join-Path $here '_build'
+$baseExport = Join-Path $here '_base'
+$patches    = Join-Path $here 'patches'
+$stage      = Join-Path $here '_build'
 
-if (-not (Test-Path -LiteralPath $Vanilla))  { throw "Vanilla movie not found: '$Vanilla'. Pass -Vanilla." }
-if (-not (Test-Path -LiteralPath $FfdecJar)) { throw "ffdec.jar not found: '$FfdecJar'. Pass -FfdecJar." }
-if (-not (Test-Path -LiteralPath $patches))  { throw "Patch folder not found: '$patches'." }
+if (-not (Test-Path -LiteralPath $Vanilla))     { throw "Vanilla movie not found: '$Vanilla'. Pass -Vanilla." }
+if (-not (Test-Path -LiteralPath $FfdecJar))    { throw "ffdec.jar not found: '$FfdecJar'. Pass -FfdecJar." }
+if (-not (Test-Path -LiteralPath $baseExport))  { throw "Pinned base export not found: '$baseExport'. Run ui\make-patches.ps1 -Refresh." }
+if (-not (Test-Path -LiteralPath $patches))     { throw "Patch folder not found: '$patches'." }
 
+# -------------------------------------------------------------- 1. base copy
 if (Test-Path -LiteralPath $stage) { Remove-Item -Recurse -Force $stage }
-
-# ---------------------------------------------------------------- 1. export
-Write-Host "Export  : $Vanilla -> $stage"
-& $Java -jar $FfdecJar -export script $stage $Vanilla 2>&1 | Select-Object -Last 1
+Copy-Item -LiteralPath $baseExport -Destination $stage -Recurse
 $scripts = Join-Path $stage 'scripts'
-if (-not (Test-Path -LiteralPath $scripts)) { throw "FFDec export produced no 'scripts' folder." }
+if (-not (Test-Path -LiteralPath $scripts)) { throw "Pinned base has no 'scripts' folder." }
+Write-Host "Base    : $baseExport -> $stage"
 
 # ---------------------------------------------------------------- 2. patch
 Push-Location $stage
 try {
-    # Patch paths are 'scripts/__Packages/...', i.e. relative to the staging
-    # root, so apply from $stage (not from $scripts).
+    # git writes progress to stderr, which PowerShell 5.1 would turn into a
+    # terminating error while $ErrorActionPreference is 'Stop'.
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
@@ -81,7 +83,27 @@ try {
     Pop-Location
 }
 
-# ---------------------------------------------------------------- 3. import
+# ----------------------------------------------------- 3. verify the edits
+# Applying patches silently succeeding is not proof they landed; check for
+# identifiers that only exist in the patched movie.
+$expected = @{
+    'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned')
+    'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus')
+    'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
+    'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
+    'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
+}
+foreach ($rel in $expected.Keys) {
+    $path = Join-Path $stage $rel
+    if (-not (Test-Path -LiteralPath $path)) { throw "Expected file missing after patching: '$rel'." }
+    $text = Get-Content -LiteralPath $path -Raw
+    foreach ($needle in $expected[$rel]) {
+        if ($text -notlike "*$needle*") { throw "Patch verification failed: '$needle' not found in '$rel'." }
+    }
+}
+Write-Host "Verify  : all expected edits present"
+
+# ---------------------------------------------------------------- 4. import
 Write-Host "Import  : $scripts -> $Out"
 & $Java -jar $FfdecJar -importScript $Vanilla $Out $stage 2>&1 | Select-Object -Last 1
 if (-not (Test-Path -LiteralPath $Out)) { throw "FFDec import produced no output movie." }

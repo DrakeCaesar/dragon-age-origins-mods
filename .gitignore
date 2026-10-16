@@ -20,9 +20,15 @@ ui/_ftg/
 ui/_ftg_backup_levelup.swf
 
 # ------------------------------------------------------- local scratch trees
+# _base is the pinned pristine export our patches are diffed against and
+# applied to (FFDec's export is not deterministic, so it must be pinned).
+# Regenerate with: powershell -File ui\make-patches.ps1 -Refresh
+ui/_base/
+ui/_work/
+ui/_build/
 ui/_export_check/
-ui/_import/
 ui/_pristine/
 ui/_verify/
+ui/_import/
 
 __pycache__/

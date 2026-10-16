@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/SkillsScene.as b/scripts/__Packages/SkillsScene.as
-index c00464a..4d7e99e 100644
+index c00464a..5a3b238 100644
 --- a/scripts/__Packages/SkillsScene.as
 +++ b/scripts/__Packages/SkillsScene.as
 @@ -19,6 +19,8 @@ class SkillsScene extends AbilityScene
@@ -24,6 +24,15 @@ index c00464a..4d7e99e 100644
        _root.Skills_header_mc_init = function()
        {
           this.header_txt_mc_init = function()
+@@ -200,7 +208,7 @@ class SkillsScene extends AbilityScene
+             }
+          }
+       }
+-      if(!SkillsScene.bWeHadPointsInitially)
++      if(!SkillsScene.bWeHadPointsInitially && !SkillsScene.bLevelUp)
+       {
+          SkillsScene.SkipScene();
+       }
 @@ -214,13 +222,13 @@ class SkillsScene extends AbilityScene
     }
     static function Unlearn(a_mcAbility)

@@ -1,24 +1,22 @@
 # ---------------------------------------------------------------- build output
-# Everything here is regenerable from src\ + ui\patches\ (+ the game install).
+# Everything here is regenerable from src\ + ui\movies\*\patches\ (+ the game install).
 build/stage/
 build/*.dazip
 src/*.ncs
 ui/levelup.swf
-ui/_build/
-ui/_test_out.swf
+ui/portraits.swf
 
 # ------------------------------------------------- third-party, NOT ours
 # BioWare: extracted game resources and decompiled ActionScript.
 # These are read as build inputs but must never be redistributed.
+ui/movies/*/vanilla.swf
 ui/vanilla_levelup.swf
-ui/_base_guiexport/
+ui/movies/levelup/_base_guiexport/
 ui/vanilla_scripts/
 ref/script.ldf
 ref/cscript.ldf
 ref/levelup_*.swf
-ref/_p2scripts/
-ref/_p3scripts/
-ref/_carryover/
+ref/ui/
 
 # FtG UI Mod: no licence confirmation was ever obtained for this content.
 ui/_ftg/
@@ -27,10 +25,10 @@ ui/_ftg_backup_levelup.swf
 # ------------------------------------------------------- local scratch trees
 # _base is the pinned pristine export our patches are diffed against and
 # applied to (FFDec's export is not deterministic, so it must be pinned).
-# Regenerate with: powershell -File ui\make-patches.ps1 -Refresh
-ui/_base/
-ui/_work/
-ui/_build/
+# Regenerate with: powershell -File ui\make-patches.ps1 -Movie <name> -Refresh
+ui/movies/*/_base/
+ui/movies/*/_work/
+ui/movies/*/_build/
 ui/_export_check/
 ui/_pristine/
 ui/_verify/

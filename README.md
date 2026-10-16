@@ -48,14 +48,18 @@ In game, open the console and run:
 `<skill>` is matched loosely and case-insensitively: `coercion`/`persuade`,
 `stealing`, `traps`, `survival`, `herbalism`, `poison`, `training`, `tactics`.
 
-> **The screen needs at least one unspent skill or talent point to appear.**
-> That is vanilla behaviour: the game skips the level-up scenes entirely when
-> there is nothing to spend (`bWeHadPointsInitially = nPointsToSpend > 0`), so
-> with zero points the window opens and immediately closes. Refund one point
-> first (e.g. `runscript respec1 herbalism`) if you need to.
+You normally do not need the console at all: the level-up indicator on the
+party portraits is patched to be always available, so you can click it to open
+the screen. It no longer flashes, either.
 
-**Cancel is safe.** Closing the screen aborts and restores attributes, skills
-and talents/spells to the state they were in when it opened.
+> **No unspent points are required.** The game's level-up screen normally skips
+> its panes when there is nothing to spend (`bWeHadPointsInitially =
+> nPointsToSpend > 0`), which is why a fully-spent character could not be
+> edited. The patches disable that in level-up mode, so the screen opens on
+> whatever build you have.
+
+**Cancel is safe.** Closing the screen aborts and restores attributes, skills,
+talents/spells and specializations to the state they were in when it opened.
 
 ## How it works
 
@@ -66,14 +70,15 @@ resources are mounted and one `AddInItem` can only carry one value:
    Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
-2. **UI** (`ui/levelup.swf`), extending `core`, which is where the level-up
-   movie resource actually lives.
+2. **UI**, extending `core`, which is where the UI movie resources live. Two
+   movies are patched: `levelup` (the screen itself) and `portraits` (the party
+   portraits that carry the level-up indicator).
 
-The movie ships with the game as `levelup.gfx`, a headerless SWF inside
-`guiexport.erf`. Its ActionScript tracks edits in session-only arrays
-(`aStoredPoints`, `m_aAttributes`) that are cleared on every pane initialise,
-which is what makes existing picks uneditable. The patches in `ui/patches/`
-change that for level-up mode only:
+The movies ship with the game as headerless SWFs (`levelup.gfx`, and
+`portraits.gfx`) inside the GUI packages. Their ActionScript tracks edits in
+session-only arrays (`aStoredPoints`, `m_aAttributes`) that are cleared on every
+pane initialise, which is what makes existing picks uneditable. The patches in
+`ui/movies/*/patches/` change that for level-up mode only:
 
 - owned abilities become clickable, and unlearnable
 - an existing specialization can be removed, refunding the specialization point
@@ -82,9 +87,10 @@ change that for level-up mode only:
 - a specialization cannot be removed while a talent or spell it unlocks is
   still picked
 - panes no longer revert when you navigate backwards
+- the level-up indicator is always visible, without the flashing animation
 
-Everything is scoped to `bLevelUp`, so character creation behaves exactly as
-vanilla.
+Everything is scoped to `bLevelUp` (or to the portrait indicator itself), so
+character creation behaves exactly as vanilla.
 
 ## Building
 
@@ -101,30 +107,34 @@ powershell -ExecutionPolicy Bypass -File build\deploy.ps1
 `deploy.ps1` is the fast iteration path (it writes straight into the installed
 addin folders). `dazip.ps1` is the distributable path.
 
-To rebuild the patched movie from source:
+To rebuild the patched movies from source:
 
 ```powershell
-# regenerate ui\patches\*.patch from the edited scripts (ui\_work) vs the pinned base
-powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1
+# regenerate patches from the edited scripts (_work) vs the pinned base
+powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie levelup
+powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie portraits
 
-# apply the patches and produce ui\levelup.swf
-powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1
+# apply the patches and produce ui\levelup.swf / ui\portraits.swf
+powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie levelup
+powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie portraits
 ```
 
-These need [FFDec (JPEXS Free Flash Decompiler)](https://github.com/jindrapetrik/jpexs-decompiler)
-and Java, plus the extracted vanilla movie. See [Notes](#notes).
+Both take `-Movie` (default `levelup`). These need
+[FFDec (JPEXS Free Flash Decompiler)](https://github.com/jindrapetrik/jpexs-decompiler)
+and Java, plus the extracted vanilla movies. See [Notes](#notes).
 
 ## Repository layout
 
 ```
-src/respec1.nss        the console script (all modes)
-dazip/Manifest.xml     addin manifest: both AddInItems + the required credit
-ui/patches/*.patch     ActionScript changes, as diffs
-ui/build-movie.ps1     apply patches -> ui/levelup.swf
-ui/make-patches.ps1    regenerate patches from the edited scripts
-build/dazip.ps1        build, install and uninstall the .dazip
-build/deploy.ps1       one-command deploy into the installed addin
-ref/                   engine API and ability-id references
+src/respec1.nss                     the console script (all modes)
+dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
+ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
+ui/movies/portraits/patches/*.patch level-up indicator changes
+ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
+ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
+build/dazip.ps1                     build, install and uninstall the .dazip
+build/deploy.ps1                    one-command deploy into the installed addin
+ref/                                engine API and ability-id references
 ```
 
 ## Notes
@@ -138,9 +148,8 @@ ActionScript and the engine `.ldf` files are build *inputs* and are `.gitignore`
 — they are BioWare's and are not redistributed here. Only our own patches
 against them are.
 
-**Take the movie from the newest patch, not from `guiexport.erf`.** The game
-ships several revisions of the level-up screen and patches override the base
-package:
+**Take the movies from the newest patch, not from `guiexport.erf`.** The game
+ships several revisions of the UI and patches override the base package:
 
 ```
 packages\core\data\guiexport.erf      levelup.gfx   <- base game, PRE-patch
@@ -148,12 +157,13 @@ packages\core\patch\patch002.erf      levelup.gfx
 packages\core\patch\patch003.erf      levelup.gfx   <- the one the game uses
 ```
 
-Patching the `guiexport` copy produces a movie that renders without the
-post-patch art fixes (button skins, specialization icons, portrait framing), so
-always base the build on the highest-numbered patch that ships a `levelup.gfx`.
+The same applies to `portraits.gfx`, `quickbar.gfx` and `navbar.gfx`. Patching
+the `guiexport` copies produces movies that render without the post-patch art
+fixes (button skins, specialization icons, portrait framing), so always base
+the build on the highest-numbered patch that ships the resource.
 
-`levelup.gfx` is a headerless SWF: prepending an 8-byte `FWS` header
-(`"FWS"` + version `9` + total length) makes it parseable by FFDec.
+These are headerless SWFs: prepending an 8-byte `FWS` header (`"FWS"` + version
+`9` + total length) makes them parseable by FFDec.
 
 **No third-party UI mod is required or bundled.**
 

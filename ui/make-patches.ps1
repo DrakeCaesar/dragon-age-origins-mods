@@ -1,31 +1,31 @@
-﻿<#
+<#
 .SYNOPSIS
-    Regenerates ui\patches\*.patch by diffing the pinned base export against
-    the edited working tree.
+    Regenerates ui\movies\<Movie>\patches\*.patch by diffing the pinned base
+    export against the edited working tree.
 
 .DESCRIPTION
     FFDec's script export is NOT deterministic, so patches are diffed against a
-    single pinned export (ui\_base) rather than a fresh one. The working tree
-    (ui\_work) must itself be derived from that same base, otherwise unrelated
-    FFDec artefacts show up as patches.
+    single pinned export (ui\movies\<Movie>\_base) rather than a fresh one. The
+    working tree (_work) must itself be derived from that same base, otherwise
+    unrelated FFDec artefacts show up as patches.
 
     Typical loop:
-        powershell -File ui\make-patches.ps1 -Refresh     # pin the base
-        # edit ui\_work\scripts\...
-        powershell -File ui\make-patches.ps1              # regenerate patches
+        powershell -File ui\make-patches.ps1 -Movie levelup -Refresh
+        # edit ui\movies\levelup\_work\scripts\...
+        powershell -File ui\make-patches.ps1 -Movie levelup
 
     Every patch is rewritten, and patches whose file no longer differs are
     deleted, so patches cannot silently go stale.
 
+.PARAMETER Movie
+    Movie to work on: the folder name under ui\movies\. Default: levelup
+
 .PARAMETER Refresh
-    Re-export the vanilla movie's scripts into ui\_base first. Use after
-    changing which movie is being patched.
+    Re-export the movie's ActionScript into _base first. Use after changing
+    which SWF is being patched.
 
 .PARAMETER Vanilla
-    The unpatched vanilla movie to export when -Refresh is used.
-
-.PARAMETER Work
-    Edited tree to diff against the base. Default: ui\_work
+    Movie to export when -Refresh is used. Default: ui\movies\<Movie>\vanilla.swf
 
 .PARAMETER FfdecJar
     Path to ffdec.jar.
@@ -34,29 +34,32 @@
     Java executable.
 
 .EXAMPLE
-    powershell -File ui\make-patches.ps1 -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
+    powershell -File ui\make-patches.ps1 -Movie portraits -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
 #>
 [CmdletBinding()]
 param(
+    [string] $Movie = 'levelup',
     [switch] $Refresh,
     [string] $Vanilla,
-    [string] $Work,
     [string] $FfdecJar,
     [string] $Java = 'java'
 )
 
 $ErrorActionPreference = 'Stop'
 
-$here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
-if (-not $Vanilla)  { $Vanilla  = Join-Path $here 'vanilla_levelup.swf' }
-if (-not $FfdecJar) { $FfdecJar = Join-Path $env:TEMP 'ffdec\ffdec.jar' }
-if (-not $Work)     { $Work     = Join-Path $here '_work' }
+$here     = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
+$movieDir = Join-Path $here "movies\$Movie"
+if (-not (Test-Path -LiteralPath $movieDir)) { throw "Movie folder not found: '$movieDir'." }
 
-$baseExport = Join-Path $here '_base'
-$patches    = Join-Path $here 'patches'
+if (-not $Vanilla)  { $Vanilla  = Join-Path $movieDir 'vanilla.swf' }
+if (-not $FfdecJar) { $FfdecJar = Join-Path $env:TEMP 'ffdec\ffdec.jar' }
+
+$baseExport = Join-Path $movieDir '_base'
+$work       = Join-Path $movieDir '_work'
+$patches    = Join-Path $movieDir 'patches'
 
 if ($Refresh) {
-    if (-not (Test-Path -LiteralPath $Vanilla))  { throw "Vanilla movie not found: '$Vanilla'." }
+    if (-not (Test-Path -LiteralPath $Vanilla))  { throw "Movie not found: '$Vanilla'." }
     if (-not (Test-Path -LiteralPath $FfdecJar)) { throw "ffdec.jar not found: '$FfdecJar'." }
     if (Test-Path -LiteralPath $baseExport) { Remove-Item -Recurse -Force $baseExport }
     Write-Host "Export  : $Vanilla -> $baseExport"
@@ -64,15 +67,15 @@ if ($Refresh) {
 }
 
 if (-not (Test-Path -LiteralPath $baseExport)) { throw "Pinned base not found: '$baseExport'. Pass -Refresh." }
-if (-not (Test-Path -LiteralPath $Work))       { throw "Work tree not found: '$Work'." }
+if (-not (Test-Path -LiteralPath $work))       { throw "Work tree not found: '$work'." }
 if (-not (Test-Path -LiteralPath $patches))    { New-Item -ItemType Directory -Force -Path $patches | Out-Null }
 
 $bRoot = Join-Path $baseExport 'scripts'
-$wRoot = Join-Path $Work 'scripts'
+$wRoot = Join-Path $work 'scripts'
 
 $changed = 0
-$kept    = @()
 
+# git writes to stderr; keep it from becoming a terminating error.
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
 try {
@@ -99,9 +102,8 @@ try {
         Set-Content -LiteralPath $out -Value $body -Encoding utf8
 
         $hunks = ($body | Where-Object { $_ -match '^@@' } | Measure-Object).Count
-        Write-Host ("Patch   : {0,-32} {1} hunk(s)" -f $name, $hunks)
+        Write-Host ("Patch   : {0,-34} {1} hunk(s)" -f $name, $hunks)
         $changed++
-        $kept += $name
     }
 } finally {
     $ErrorActionPreference = $prevEap
@@ -109,4 +111,4 @@ try {
 
 if ($changed -eq 0) { Write-Warning "No differences found -- no patches written." }
 Write-Host ""
-Write-Host "$changed patch(es) in $patches"
+Write-Host "$Movie : $changed patch(es) in $patches"

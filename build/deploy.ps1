@@ -120,21 +120,32 @@ if (Test-Path -LiteralPath $staleCore) {
     Write-Host "Cleanup  : removed stale $staleCore"
 }
 
-# --------------------------------------------------------- 2. UI addin
-# Must extend "core" - the level-up screen resource lives in the core package.
-$swf = Join-Path $root 'ui\levelup.swf'
+# --------------------------------------------------------- 2. UI addins
+# Several movies are patched now: the level-up screen itself, and the party
+# portraits whose level-up indicator has to be always available.
+$uiMovies = @(
+    @{ Name = 'levelup';   File = 'ui\levelup.swf' },
+    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+)
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"
-} elseif (Test-Path -LiteralPath $swf) {
+} else {
+    $coreEntries = [ordered] @{}
+    foreach ($m in $uiMovies) {
+        $path = Join-Path $root $m.File
+        if (-not (Test-Path -LiteralPath $path)) {
+            throw "$($m.File) not found. Build it with ui\build-movie.ps1 -Movie $($m.Name), or pass -NoUi."
+        }
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $coreEntries["$($m.Name).swf"] = $bytes
+        Write-Host "UI       : $($m.File) -> $($m.Name).swf  ($($bytes.Length) bytes)"
+    }
+
     $uiDir = Join-Path $daDocs "AddIns\$UID_UI\core\data"
     New-Item -ItemType Directory -Force -Path $uiDir | Out-Null
-    $coreEntries = [ordered] @{}
-    $coreEntries['levelup.swf'] = [System.IO.File]::ReadAllBytes($swf)
     $uiErf = Join-Path $uiDir "${UID_UI}_modcore.erf"
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
-    Write-Host "UI       -> $uiErf  (target: core, levelup.swf $($coreEntries['levelup.swf'].Length) bytes)"
-} else {
-    Write-Host "UI       : no ui\levelup.swf - UI addin left untouched"
+    Write-Host "UI       -> $uiErf  (target: core)"
 }
 
 # --------------------------------------------------------- 4. register

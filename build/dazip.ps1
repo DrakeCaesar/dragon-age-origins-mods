@@ -195,16 +195,25 @@ Write-Host "           $($ncsBytes.Length) bytes, compiled $((Get-Item -LiteralP
 $moduleErf = New-DaoErf -Entries ([ordered] @{ "$ScriptName.ncs" = $ncsBytes })
 $stubErf   = New-DaoErf -Entries ([ordered] @{})          # 32 bytes, header only
 
-$uiErf = $null
-$swf   = Join-Path $root 'ui\levelup.swf'
+$uiErf  = $null
+$uiList = @(
+    @{ Name = 'levelup';   File = 'ui\levelup.swf' },
+    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+)
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"
-} elseif (Test-Path -LiteralPath $swf) {
-    $swfBytes = [System.IO.File]::ReadAllBytes($swf)
-    $uiErf    = New-DaoErf -Entries ([ordered] @{ 'levelup.swf' = $swfBytes })
-    Write-Host "UI       : $swf (levelup.swf $($swfBytes.Length) bytes)"
 } else {
-    throw "ui\levelup.swf not found. Build it with ui\build-movie.ps1, or pass -NoUi."
+    $coreEntries = [ordered] @{}
+    foreach ($m in $uiList) {
+        $path = Join-Path $root $m.File
+        if (-not (Test-Path -LiteralPath $path)) {
+            throw "$($m.File) not found. Build it with ui\build-movie.ps1 -Movie $($m.Name), or pass -NoUi."
+        }
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $coreEntries["$($m.Name).swf"] = $bytes
+        Write-Host "UI       : $($m.File) -> $($m.Name).swf  ($($bytes.Length) bytes)"
+    }
+    $uiErf = New-DaoErf -Entries $coreEntries
 }
 
 # ------------------------------------------------------------- stage + zip

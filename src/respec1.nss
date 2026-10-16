@@ -6,18 +6,18 @@
  * already-allocated points and refunding them.
  *
  * In game (console enabled):
- *     runscript respec1                  open the level-up screen with the
- *                                        character as they are (no changes)
+ *     runscript respec1                  MAIN: arm the portrait's level-up
+ *                                        button so it opens the screen even
+ *                                        with every point spent
+ *     runscript respec1 open             open the level-up screen directly
  *     runscript respec1 respec           FULL respec: skills, talents, spells
  *                                        and attributes, then reopen level-up
  *     runscript respec1 <skill>          lower <skill> by 1 rank
  *     runscript respec1 <skill> <n>      lower <skill> by n ranks
- *     runscript respec1 arm              let the portrait's level-up button
- *                                        open the screen with no points left
  *
- * The level-up screen can also be opened by clicking the level-up indicator on
- * the hero's portrait; `arm` is only needed because the engine refuses that
- * click unless the creature can level up.
+ * The intended way to use the mod is the GUI: run `runscript respec1` once to
+ * arm it, then click the level-up indicator on the hero's portrait whenever
+ * you want to edit the character.
  *
  * <skill> is matched loosely and case-insensitively: coercion/persuade,
  * stealing, traps, survival, herbalism, poison, training, tactics.
@@ -324,30 +324,35 @@ void main()
     nWanted = StringToInt(sCount);
     if (nWanted < 1) { nWanted = 1; }
 
-    if (nLen == 0)
+    if (nLen == 0 || sKeyword == "arm" || sKeyword == "watch")
     {
-        // ---- OPEN THE LEVEL-UP SCREEN --------------------------------------
-        // A bare `runscript respec1` opens the level-up screen for the hero,
-        // changing nothing. nMode 1 is CHARGEN_MODE_LEVELUP
-        // (sys_chargen_engine.nss). StartCharGen goes straight to the engine
-        // entry point, so it works with every point already spent.
-        StartCharGen(oPC, 1);
-    }
-    else if (sKeyword == "arm" || sKeyword == "watch")
-    {
-        // ---- MAKE THE PORTRAIT BUTTON WORK WITH NO POINTS ------------------
-        // The portrait's level-up indicator is patched to be always visible,
-        // but clicking it sends GUI.GoToLevelUp, which the engine refuses
-        // unless the creature can level up (the character sheet gates its own
-        // button on the same predicate, CanLevelUpFromCharacterSheet). Set the
-        // flag so the button works with every point spent.
+        // ---- MAIN FUNCTION: MAKE THE PORTRAIT BUTTON WORK ------------------
+        // Clicking the level-up indicator on the hero's portrait sends
+        // GUI.GoToLevelUp, which the engine refuses unless the creature can
+        // level up -- the character sheet gates its own button on the same
+        // predicate, CanLevelUpFromCharacterSheet. That check is server-side,
+        // so the UI patches cannot satisfy it; this flag can.
         //
-        // It is a creature property, so it lasts for the session; a real
-        // level-up clears it again, hence re-arm if the button stops working.
-        // Do NOT call RES_Finish here -- it would reset the flag from the
-        // point pools and undo this.
+        // The indicator itself is patched to be always visible and not to
+        // flash. Arming is what makes clicking it open the screen with every
+        // point already spent.
+        //
+        // It is a creature property, so it holds for the session; a real
+        // level-up clears it again, so re-arm if the button stops working.
+        // Do NOT call RES_Finish here -- it recomputes the flag from the point
+        // pools and would undo this.
         SetCanLevelUp(oPC, 1);
-        DisplayFloatyMessage(oPC, "Respec: level-up button armed.", FLOATY_MESSAGE, 16777215, 4.0);
+        DisplayFloatyMessage(oPC, "Respec: level-up button armed - click the portrait icon.",
+            FLOATY_MESSAGE, 16777215, 4.0);
+    }
+    else if (sKeyword == "open")
+    {
+        // ---- OPEN THE LEVEL-UP SCREEN DIRECTLY -----------------------------
+        // Same destination as the armed portrait button, without needing the
+        // flag. nMode 1 is CHARGEN_MODE_LEVELUP (sys_chargen_engine.nss), and
+        // StartCharGen goes straight to the engine entry point, so it works
+        // with every point already spent.
+        StartCharGen(oPC, 1);
     }
     else if (sKeyword == "respec" || sKeyword == "full")
     {

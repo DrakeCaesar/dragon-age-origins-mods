@@ -97,6 +97,7 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 - a specialization cannot be removed while a talent or spell it unlocks is
   still picked
 - panes no longer revert when you navigate backwards
+- Reset reverts every pane, so it cannot leave the character inconsistent
 - the level-up indicator is always visible, without the flashing animation
 
 Everything is scoped to `bLevelUp` (or to the portrait indicator itself), so

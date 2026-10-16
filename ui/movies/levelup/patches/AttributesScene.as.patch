@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/AttributesScene.as b/scripts/__Packages/AttributesScene.as
-index e1adda0..834c9cb 100644
+index e1adda0..ef6365c 100644
 --- a/scripts/__Packages/AttributesScene.as
 +++ b/scripts/__Packages/AttributesScene.as
 @@ -11,6 +11,7 @@ class AttributesScene
@@ -29,7 +29,24 @@ index e1adda0..834c9cb 100644
        _root.PortraitPicture_mc_init = function()
        {
           var _loc2_ = ExternalCommands.GetValue("CharGenCreature.Portrait");
-@@ -261,10 +268,97 @@ class AttributesScene
+@@ -111,8 +118,14 @@ class AttributesScene
+                this.SetText(Localization.Strings.LOC_RESET);
+                this.OnButtonAction = function()
+                {
+-                  LevelUp.RevertSpecializations();
+-                  LevelUp.RevertAttributes();
++                  // Revert EVERYTHING, not just specializations and
++                  // attributes. Reverting a subset can leave the character
++                  // inconsistent: lowering an attribute back while a talent
++                  // learned this session still requires the higher value, or
++                  // dropping a specialization whose talents were just picked.
++                  // A full revert lands on exactly the state the screen was
++                  // opened in, which is valid by construction.
++                  LevelUp.RevertAllChanges();
+                };
+             };
+             this.next_mc_init = function()
+@@ -261,10 +274,97 @@ class AttributesScene
        var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
        while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
        {

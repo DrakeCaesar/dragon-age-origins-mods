@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------- build output
+# Everything here is regenerable from src\ + ui\patches\ (+ the game install).
+build/stage/
+build/*.dazip
+src/*.ncs
+ui/levelup.swf
+ui/_build/
+ui/_test_out.swf
+
+# ------------------------------------------------- third-party, NOT ours
+# BioWare: extracted game resources and decompiled ActionScript.
+# These are read as build inputs but must never be redistributed.
+ui/vanilla_levelup.swf
+ui/vanilla_scripts/
+ref/script.ldf
+ref/cscript.ldf
+
+# FtG UI Mod: no licence confirmation was ever obtained for this content.
+ui/_ftg/
+ui/_ftg_backup_levelup.swf
+
+# ------------------------------------------------------- local scratch trees
+ui/_export_check/
+ui/_import/
+
+__pycache__/

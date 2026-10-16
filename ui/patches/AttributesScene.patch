@@ -1,0 +1,93 @@
+﻿diff --git a/scripts/__Packages/AttributesScene.as b/scripts/__Packages/AttributesScene.as
+index de318bb..6a1d00a 100644
+--- a/scripts/__Packages/AttributesScene.as
++++ b/scripts/__Packages/AttributesScene.as
+@@ -11,6 +11,7 @@ class AttributesScene
+    var pointsleft_mc_init;
+    var previous_mc_init;
+    static var m_aAttributes;
++   static var m_aSeedAttributes;
+    static var mcDescription;
+    static var mcDescriptionHeader;
+    static var ATTRIBUTES_BEGIN = 1;
+@@ -33,12 +34,18 @@ class AttributesScene
+       AttributesScene.bLevelUp = levelUp;
+       AttributesScene.parentClass = parent;
+       AttributesScene.m_aAttributes = new Array();
++      AttributesScene.m_aSeedAttributes = new Array();
+       var _loc3_ = AttributesScene.ATTRIBUTES_BEGIN;
+       while(_loc3_ <= AttributesScene.ATTRIBUTES_END)
+       {
+          AttributesScene.m_aAttributes[_loc3_] = 0;
++         AttributesScene.m_aSeedAttributes[_loc3_] = 0;
+          _loc3_ = _loc3_ + 1;
+       }
++      if(levelUp)
++      {
++         AttributesScene.SeedExistingAllocations();
++      }
+       _root.PortraitPicture_mc_init = function()
+       {
+          var _loc2_ = ExternalCommands.GetValue("CharGenCreature.Portrait");
+@@ -252,10 +259,60 @@ class AttributesScene
+       var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
+       while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
+       {
+-         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_]);
++         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_] - AttributesScene.m_aSeedAttributes[_loc1_]);
+          _loc1_ = _loc1_ + 1;
+       }
+    }
++   static function SeedExistingAllocations()
++   {
++      var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
++      var _loc2_;
++      var _loc3_;
++      var _loc4_;
++      while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
++      {
++         _loc2_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Total"));
++         _loc3_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Modifier"));
++         _loc4_ = _loc2_ - _loc3_ - 10 - AttributesScene.RaceAttributeBonus(_loc1_);
++         if(_loc4_ < 0)
++         {
++            _loc4_ = 0;
++         }
++         AttributesScene.m_aAttributes[_loc1_] = _loc4_;
++         AttributesScene.m_aSeedAttributes[_loc1_] = _loc4_;
++         _loc1_ = _loc1_ + 1;
++      }
++   }
++   static function RaceAttributeBonus(nID)
++   {
++      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Stats.Race"));
++      if(_loc1_ == 1)
++      {
++         if(nID == 1 || nID == 2)
++         {
++            return 1;
++         }
++         if(nID == 3)
++         {
++            return 2;
++         }
++      }
++      else if(_loc1_ == 2)
++      {
++         if(nID == 5 || nID == 6)
++         {
++            return 2;
++         }
++      }
++      else if(_loc1_ == 3)
++      {
++         if(nID == 1 || nID == 2 || nID == 4 || nID == 6)
++         {
++            return 1;
++         }
++      }
++      return 0;
++   }
+    static function CanAddMore(A)
+    {
+       return AttributesScene.AttributePointsToSpend > 0;

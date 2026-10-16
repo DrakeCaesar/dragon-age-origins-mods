@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Manifest Type="AddIn">
+	<AddInsList>
+		<!-- Script half: extends the Single Player campaign so that the console
+		     command `runscript respec1` resolves. -->
+		<AddInItem UID="respec_proto" Name="Interactive Respec" ExtendedModuleUID="Single Player" Priority="100" Enabled="1" State="2" Format="1">
+			<Title DefaultText="Interactive Respec">
+				<en-us>
+					<![CDATA[Interactive Respec]]>
+				</en-us>
+			</Title>
+			<Description DefaultText="Full interactive respec: lower skills, talents, spells and attributes at any time. Use 'runscript respec1'. Respec mechanism credited to Peter 'weriK' Kovacs (Character Respecialization, Nexus mod 14), reused under his permission grant.">
+				<en-us>
+					<![CDATA[Full interactive respec: lower skills, talents, spells and attributes at any time, then re-open the level-up screen. Open the console and type: runscript respec1
+
+Respecialisation mechanism credited to Peter 'weriK' Kovacs ("Character Respecialization", Nexus mod 14), reused under his permission grant (modify and release improvements, with credit).]]>
+				</en-us>
+			</Description>
+			<Image/>
+			<Rating DefaultText="">
+			</Rating>
+			<RatingDescription DefaultText="">
+			</RatingDescription>
+			<URL DefaultText="">
+			</URL>
+			<ReleaseDate>16/10/2026</ReleaseDate>
+			<Version>0.2</Version>
+			<GameVersion/>
+			<Type>1</Type>
+			<Publisher DefaultText="">
+			</Publisher>
+			<PrereqList/>
+			<FileList>
+				<Folder src="packages/" Type="package"/>
+				<Folder src="addins/" Type="addin"/>
+			</FileList>
+		</AddInItem>
+		<!-- UI half: must extend the CORE module, which is where the level-up
+		     screen resource actually lives. A Single Player addin's core data is
+		     not mounted where the UI looks, and vice versa for the script. -->
+		<AddInItem UID="respec_proto_ui" Name="Interactive Respec (UI)" ExtendedModuleUID="core" Priority="100" Enabled="1" State="2" Format="1">
+			<Title DefaultText="Interactive Respec (UI)">
+				<en-us>
+					<![CDATA[Interactive Respec (UI)]]>
+				</en-us>
+			</Title>
+			<Description DefaultText="Level-up screen resources for Interactive Respec.">
+				<en-us>
+					<![CDATA[Level-up screen resources for Interactive Respec. Install alongside the main addin.]]>
+				</en-us>
+			</Description>
+			<Image/>
+			<Rating DefaultText="">
+			</Rating>
+			<RatingDescription DefaultText="">
+			</RatingDescription>
+			<URL DefaultText="">
+			</URL>
+			<ReleaseDate>16/10/2026</ReleaseDate>
+			<Version>0.2</Version>
+			<GameVersion/>
+			<Type>1</Type>
+			<Publisher DefaultText="">
+			</Publisher>
+			<PrereqList/>
+			<FileList>
+				<Folder src="packages/" Type="package"/>
+				<Folder src="addins/" Type="addin"/>
+			</FileList>
+		</AddInItem>
+	</AddInsList>
+</Manifest>

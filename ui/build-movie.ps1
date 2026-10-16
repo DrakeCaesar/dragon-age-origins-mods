@@ -87,7 +87,7 @@ try {
 # Applying patches silently succeeding is not proof they landed; check for
 # identifiers that only exist in the patched movie.
 $expected = @{
-    'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned')
+    'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
     'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus')
     'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
     'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')

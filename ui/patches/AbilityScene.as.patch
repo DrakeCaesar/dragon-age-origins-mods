@@ -1,8 +1,19 @@
 ﻿diff --git a/scripts/__Packages/AbilityScene.as b/scripts/__Packages/AbilityScene.as
-index 97a3b58..5da99bb 100644
+index 97a3b58..a7731a2 100644
 --- a/scripts/__Packages/AbilityScene.as
 +++ b/scripts/__Packages/AbilityScene.as
-@@ -134,13 +134,49 @@ class AbilityScene
+@@ -114,6 +114,10 @@ class AbilityScene
+    }
+    static function UnspendPoint(oClass, a_nID)
+    {
++      if(AbilityScene.IsPrereqOfOwned(oClass,a_nID))
++      {
++         return false;
++      }
+       var _loc4_ = true;
+       var _loc5_ = -1;
+       var _loc1_ = 0;
+@@ -134,13 +138,88 @@ class AbilityScene
        {
           oClass.nPointsToSpend = oClass.nPointsToSpend + 1;
           AbilityScene.UpdatePointsToSpend(oClass);
@@ -22,6 +33,45 @@ index 97a3b58..5da99bb 100644
        }
        return _loc4_;
     }
++   static function ChainTokenBase(oClass)
++   {
++      if(oClass.nType == CharGen.SKILLS)
++      {
++         return "CharGenCreature.Stats.SkillChains";
++      }
++      if(oClass.nType == CharGen.SPELLS)
++      {
++         return "CharGenCreature.Stats.SpellChains";
++      }
++      if(oClass.nType == CharGen.TALENTS)
++      {
++         return "CharGenCreature.Stats.TalentChains";
++      }
++      return "";
++   }
++   static function IsPrereqOfOwned(oClass, a_nID)
++   {
++      var sBase = AbilityScene.ChainTokenBase(oClass);
++      var nCount;
++      var _loc3_;
++      var _loc2_;
++      if(sBase == "")
++      {
++         return false;
++      }
++      nCount = Number(ExternalCommands.GetNumMembers(sBase));
++      _loc3_ = 0;
++      while(_loc3_ < nCount)
++      {
++         _loc2_ = SharedLibrary.Ability.LoadFromToken(sBase + "." + _loc3_,true);
++         if(_loc2_.nDisplayState == SharedLibrary.Ability.DISPLAYSTATE_HAVE && _loc2_.nPrereqAbilityID == a_nID)
++         {
++            return true;
++         }
++         _loc3_ = _loc3_ + 1;
++      }
++      return false;
++   }
 +   static function RestoreUnlearned(oClass)
 +   {
 +      var _loc1_;

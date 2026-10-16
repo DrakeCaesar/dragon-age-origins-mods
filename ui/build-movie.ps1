@@ -81,7 +81,7 @@ $checks = @{
     }
     'portraits' = @{
         expected = @{
-            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndStop(1)')
+            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndStop(29)')
         }
         forbidden = @{
             'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndPlay(0)')

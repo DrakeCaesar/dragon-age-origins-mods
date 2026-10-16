@@ -36,23 +36,19 @@ The `.dazip` is a normal DAO package, so DAO-Modmanager / DAModder work too.
 
 ## Usage
 
-Open the console and run **once**:
+Open the console and run:
 
 ```
 runscript respec1
 ```
 
-That arms the level-up indicator on the hero's portrait. From then on, **click
-the portrait icon** whenever you want to edit the character — no console
-needed, and it works with every point already spent. (A real level-up clears
-the flag, so re-run the command if the button stops responding.)
-
-The other modes are optional extras:
+That opens the level-up screen for the hero, with the build as it is. Everything
+after that is the GUI.
 
 | Command | Effect |
 | --- | --- |
-| `runscript respec1` | **Main:** arm the portrait's level-up button |
-| `runscript respec1 open` | Open the level-up screen directly, bypassing the button |
+| `runscript respec1` | **Main:** open the level-up screen, changing nothing |
+| `runscript respec1 arm` | Set the level-up flag and report it (diagnostic) |
 | `runscript respec1 respec` | Full respec (skills, talents, spells, attributes), then open the screen |
 | `runscript respec1 <skill>` | Lower `<skill>` by one rank and refund the point |
 | `runscript respec1 <skill> <n>` | Lower `<skill>` by `n` ranks |
@@ -60,11 +56,12 @@ The other modes are optional extras:
 `<skill>` is matched loosely and case-insensitively: `coercion`/`persuade`,
 `stealing`, `traps`, `survival`, `herbalism`, `poison`, `training`, `tactics`.
 
-> **Why arming is needed.** Clicking the indicator sends `GUI.GoToLevelUp`,
-> which the engine refuses unless the creature can level up — the character
-> sheet gates its own Level Up button on the same predicate
-> (`CanLevelUpFromCharacterSheet`). That check is server-side, so the UI patches
-> cannot satisfy it; the script sets the flag instead.
+The level-up indicator on the hero's portrait is patched to be always visible
+and no longer flashes, so it looks the part — but it sends
+`GUI.GoToLevelUp`, and the engine refuses that message unless the character can
+actually level up. Setting the level-up flag does **not** satisfy it, so the
+console command above is still required to open the screen. Use `arm` to see
+the flag and unspent-point values if you want to confirm that.
 
 > **No unspent points are required to see the screen.** The movie normally skips
 > its panes when there is nothing to spend (`bWeHadPointsInitially =

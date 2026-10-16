@@ -1,0 +1,56 @@
+﻿diff --git a/scripts/__Packages/AbilityScene.as b/scripts/__Packages/AbilityScene.as
+index 97a3b58..5da99bb 100644
+--- a/scripts/__Packages/AbilityScene.as
++++ b/scripts/__Packages/AbilityScene.as
+@@ -134,13 +134,49 @@ class AbilityScene
+       {
+          oClass.nPointsToSpend = oClass.nPointsToSpend + 1;
+          AbilityScene.UpdatePointsToSpend(oClass);
+-         oClass.aStoredPoints.splice(_loc5_,1);
+-         oClass.aStoredPrereqs.splice(_loc5_,1);
++         if(_loc5_ >= 0)
++         {
++            oClass.aStoredPoints.splice(_loc5_,1);
++            oClass.aStoredPrereqs.splice(_loc5_,1);
++         }
++         else if(oClass.aUnlearnedPoints != undefined)
++         {
++            oClass.aUnlearnedPoints.push(a_nID);
++         }
+          AbilityScene.SendSelectionMessage(oClass,- a_nID,true);
+          ExternalCommands.PlayGUISound(SoundEvents.ST_UNLEARN_SKILL);
+       }
+       return _loc4_;
+    }
++   static function RestoreUnlearned(oClass)
++   {
++      var _loc1_;
++      if(oClass.aUnlearnedPoints == undefined)
++      {
++         return undefined;
++      }
++      _loc1_ = 0;
++      while(_loc1_ < oClass.aUnlearnedPoints.length)
++      {
++         AbilityScene.SendSelectionMessage(oClass,oClass.aUnlearnedPoints[_loc1_],false);
++         _loc1_ = _loc1_ + 1;
++      }
++      oClass.aUnlearnedPoints = new Array();
++   }
++   static function RevertPoints(oClass, bSendAbilityChainsRequest)
++   {
++      AbilityScene.ResetPoints(oClass,false);
++      AbilityScene.RestoreUnlearned(oClass);
++      if(oClass.nInitialPoints >= 0)
++      {
++         oClass.nPointsToSpend = oClass.nInitialPoints;
++      }
++      AbilityScene.UpdatePointsToSpend(oClass);
++      if(bSendAbilityChainsRequest)
++      {
++         AbilityScene.SendAbilityChainsRequest(oClass);
++      }
++   }
+    static function IsNewAbility(a_oScene, a_nID)
+    {
+       var _loc1_ = 0;

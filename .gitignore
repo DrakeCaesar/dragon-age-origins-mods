@@ -22,5 +22,7 @@ ui/_ftg_backup_levelup.swf
 # ------------------------------------------------------- local scratch trees
 ui/_export_check/
 ui/_import/
+ui/_pristine/
+ui/_verify/
 
 __pycache__/

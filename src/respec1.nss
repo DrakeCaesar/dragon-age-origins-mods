@@ -12,10 +12,12 @@
  *                                        and attributes, then reopen level-up
  *     runscript respec1 <skill>          lower <skill> by 1 rank
  *     runscript respec1 <skill> <n>      lower <skill> by n ranks
+ *     runscript respec1 arm              let the portrait's level-up button
+ *                                        open the screen with no points left
  *
- * NOTE: the level-up movie skips its scenes when the creature has no unspent
- * points (bWeHadPointsInitially = nPointsToSpend > 0), so to actually see the
- * screen you need at least one unspent skill/talent point.
+ * The level-up screen can also be opened by clicking the level-up indicator on
+ * the hero's portrait; `arm` is only needed because the engine refuses that
+ * click unless the creature can level up.
  *
  * <skill> is matched loosely and case-insensitively: coercion/persuade,
  * stealing, traps, survival, herbalism, poison, training, tactics.
@@ -327,12 +329,25 @@ void main()
         // ---- OPEN THE LEVEL-UP SCREEN --------------------------------------
         // A bare `runscript respec1` opens the level-up screen for the hero,
         // changing nothing. nMode 1 is CHARGEN_MODE_LEVELUP
-        // (sys_chargen_engine.nss).
-        //
-        // The movie skips its scenes when there are no unspent points
-        // (bWeHadPointsInitially = nPointsToSpend > 0), so at least one
-        // unspent skill/talent point is needed for the screen to show.
+        // (sys_chargen_engine.nss). StartCharGen goes straight to the engine
+        // entry point, so it works with every point already spent.
         StartCharGen(oPC, 1);
+    }
+    else if (sKeyword == "arm" || sKeyword == "watch")
+    {
+        // ---- MAKE THE PORTRAIT BUTTON WORK WITH NO POINTS ------------------
+        // The portrait's level-up indicator is patched to be always visible,
+        // but clicking it sends GUI.GoToLevelUp, which the engine refuses
+        // unless the creature can level up (the character sheet gates its own
+        // button on the same predicate, CanLevelUpFromCharacterSheet). Set the
+        // flag so the button works with every point spent.
+        //
+        // It is a creature property, so it lasts for the session; a real
+        // level-up clears it again, hence re-arm if the button stops working.
+        // Do NOT call RES_Finish here -- it would reset the flag from the
+        // point pools and undo this.
+        SetCanLevelUp(oPC, 1);
+        DisplayFloatyMessage(oPC, "Respec: level-up button armed.", FLOATY_MESSAGE, 16777215, 4.0);
     }
     else if (sKeyword == "respec" || sKeyword == "full")
     {

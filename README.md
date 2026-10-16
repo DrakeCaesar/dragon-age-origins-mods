@@ -44,19 +44,27 @@ In game, open the console and run:
 | `runscript respec1 respec` | Full respec (skills, talents, spells, attributes), then open the screen |
 | `runscript respec1 <skill>` | Lower `<skill>` by one rank and refund the point |
 | `runscript respec1 <skill> <n>` | Lower `<skill>` by `n` ranks |
+| `runscript respec1 arm` | Make the portrait button work with no points left |
 
 `<skill>` is matched loosely and case-insensitively: `coercion`/`persuade`,
 `stealing`, `traps`, `survival`, `herbalism`, `poison`, `training`, `tactics`.
 
-You normally do not need the console at all: the level-up indicator on the
-party portraits is patched to be always available, so you can click it to open
-the screen. It no longer flashes, either.
+You normally do not need the console: the level-up indicator on the hero's
+portrait is patched to be always visible and no longer flashes, so you can
+click it to open the screen. It no longer requires unspent points either.
 
-> **No unspent points are required.** The game's level-up screen normally skips
+> **`arm` and the portrait button.** Clicking the indicator sends
+> `GUI.GoToLevelUp`, which the engine refuses unless the creature can level up
+> — the character sheet gates its own button on the same predicate
+> (`CanLevelUpFromCharacterSheet`). That flag is server-side, so the movie
+> cannot set it. Running `runscript respec1 arm` once sets it, after which the
+> portrait button works for the rest of the session, including with every point
+> spent. A real level-up clears the flag again, so re-arm if the button stops.
+
+> **No unspent points are required to see the screen.** The movie normally skips
 > its panes when there is nothing to spend (`bWeHadPointsInitially =
 > nPointsToSpend > 0`), which is why a fully-spent character could not be
-> edited. The patches disable that in level-up mode, so the screen opens on
-> whatever build you have.
+> edited. The patches disable that in level-up mode.
 
 **Cancel is safe.** Closing the screen aborts and restores attributes, skills,
 talents/spells and specializations to the state they were in when it opened.

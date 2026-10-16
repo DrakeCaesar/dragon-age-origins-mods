@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/AttributesScene.as b/scripts/__Packages/AttributesScene.as
-index de318bb..6a1d00a 100644
+index de318bb..882fe8e 100644
 --- a/scripts/__Packages/AttributesScene.as
 +++ b/scripts/__Packages/AttributesScene.as
 @@ -11,6 +11,7 @@ class AttributesScene
@@ -29,15 +29,15 @@ index de318bb..6a1d00a 100644
        _root.PortraitPicture_mc_init = function()
        {
           var _loc2_ = ExternalCommands.GetValue("CharGenCreature.Portrait");
-@@ -252,10 +259,60 @@ class AttributesScene
+@@ -252,10 +259,97 @@ class AttributesScene
        var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
        while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
        {
 -         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_]);
 +         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_] - AttributesScene.m_aSeedAttributes[_loc1_]);
-          _loc1_ = _loc1_ + 1;
-       }
-    }
++         _loc1_ = _loc1_ + 1;
++      }
++   }
 +   static function SeedExistingAllocations()
 +   {
 +      var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
@@ -55,9 +55,9 @@ index de318bb..6a1d00a 100644
 +         }
 +         AttributesScene.m_aAttributes[_loc1_] = _loc4_;
 +         AttributesScene.m_aSeedAttributes[_loc1_] = _loc4_;
-+         _loc1_ = _loc1_ + 1;
-+      }
-+   }
+          _loc1_ = _loc1_ + 1;
+       }
+    }
 +   static function RaceAttributeBonus(nID)
 +   {
 +      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Stats.Race"));
@@ -87,6 +87,43 @@ index de318bb..6a1d00a 100644
 +         }
 +      }
 +      return 0;
++   }
++   static function CanRemovePoint(nID)
++   {
++      var fNew = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + nID + ".Base")) - 1;
++      return !AttributesScene.IsAttributeRequiredAbove(nID,fNew);
++   }
++   static function IsAttributeRequiredAbove(nID, fValue)
++   {
++      var aBases = new Array("CharGenCreature.Stats.SkillChains","CharGenCreature.Stats.SpellChains","CharGenCreature.Stats.TalentChains");
++      var _loc2_;
++      var _loc3_;
++      var _loc4_;
++      var _loc5_;
++      var _loc6_;
++      var _loc7_;
++      _loc6_ = 0;
++      while(_loc6_ < aBases.length)
++      {
++         _loc2_ = aBases[_loc6_];
++         _loc3_ = Number(ExternalCommands.GetNumMembers(_loc2_));
++         _loc4_ = 0;
++         while(_loc4_ < _loc3_)
++         {
++            _loc5_ = _loc2_ + "." + _loc4_;
++            if(ExternalCommands.GetNumber(_loc5_ + ".DisplayState") == SharedLibrary.Ability.DISPLAYSTATE_HAVE)
++            {
++               _loc7_ = ExternalCommands.GetNumber(_loc5_ + ".AbilityTemplate.PrereqAttributeID");
++               if(_loc7_ == nID && ExternalCommands.GetNumber(_loc5_ + ".AbilityTemplate.PrereqAttributeValue") > fValue)
++               {
++                  return true;
++               }
++            }
++            _loc4_ = _loc4_ + 1;
++         }
++         _loc6_ = _loc6_ + 1;
++      }
++      return false;
 +   }
     static function CanAddMore(A)
     {

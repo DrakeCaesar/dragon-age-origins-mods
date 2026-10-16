@@ -88,7 +88,8 @@ try {
 # identifiers that only exist in the patched movie.
 $expected = @{
     'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
-    'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus')
+    'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus', 'IsAttributeRequiredAbove')
+    'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
     'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
     'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
     'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')

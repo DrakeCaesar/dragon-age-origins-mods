@@ -92,6 +92,7 @@ $expected = @{
     'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
     'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
     'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
+    'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs')
     'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
 }
 foreach ($rel in $expected.Keys) {
@@ -100,6 +101,20 @@ foreach ($rel in $expected.Keys) {
     $text = Get-Content -LiteralPath $path -Raw
     foreach ($needle in $expected[$rel]) {
         if ($text -notlike "*$needle*") { throw "Patch verification failed: '$needle' not found in '$rel'." }
+    }
+}
+
+# Some patches remove code rather than add it, so also assert that gated
+# sessions-only conditions are gone.
+$forbidden = @{
+    'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+}
+foreach ($rel in $forbidden.Keys) {
+    $path = Join-Path $stage $rel
+    if (-not (Test-Path -LiteralPath $path)) { throw "Expected file missing after patching: '$rel'." }
+    $text = Get-Content -LiteralPath $path -Raw
+    foreach ($needle in $forbidden[$rel]) {
+        if ($text -like "*$needle*") { throw "Patch verification failed: '$needle' still present in '$rel'." }
     }
 }
 Write-Host "Verify  : all expected edits present"

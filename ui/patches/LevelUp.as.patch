@@ -1,0 +1,63 @@
+﻿diff --git a/scripts/__Packages/LevelUp.as b/scripts/__Packages/LevelUp.as
+index b557813..ae36e36 100644
+--- a/scripts/__Packages/LevelUp.as
++++ b/scripts/__Packages/LevelUp.as
+@@ -17,6 +17,7 @@ class LevelUp
+    static var mcSpecDescription = null;
+    static var mcSpecPoints = null;
+    static var aNewSpecPoints = new Array();
++   static var aUnlearnedSpecs;
+    static var nSpecializationsFound = 0;
+    static var nExitPoint = 0;
+    static var LEVELUP_EXIT_ABORT = 0;
+@@ -28,6 +29,7 @@ class LevelUp
+    static function StartScene()
+    {
+       LevelUp.CreatureID = Number(ExternalCommands.GetValue("CharGenCreature.ID"));
++      LevelUp.aUnlearnedSpecs = new Array();
+       LevelUp.nExitPoint = LevelUp.LEVELUP_EXIT_ABORT;
+       LevelUp.m_Observers = new TokenObserverGroup();
+       SharedLibrary.AbilityIcon.m_AbilityIconObservers = LevelUp.m_Observers;
+@@ -219,6 +221,7 @@ class LevelUp
+       {
+          LevelUp.UnspendSpecializationPoint(LevelUp.aNewSpecPoints[0]);
+       }
++      LevelUp.RestoreUnlearnedSpecs();
+    }
+    static function RevertAttributes()
+    {
+@@ -251,6 +254,7 @@ class LevelUp
+    }
+    static function UnspendSpecializationPoint(a_nID)
+    {
++      var bWasNew = LevelUp.IsNewSpecialization(a_nID);
+       ExternalCommands.SendMessageArgs("GUILevelUp.CharGenAssignAbility",LevelUp.CreatureID,-1 * a_nID,1);
+       ExternalCommands.PlayGUISound(SoundEvents.ST_STICKYBUTTON_CLICK);
+       LevelUp.nSpecializationPoints++;
+@@ -264,6 +268,26 @@ class LevelUp
+          }
+          _loc1_ = _loc1_ + 1;
+       }
++      if(!bWasNew)
++      {
++         LevelUp.aUnlearnedSpecs.push(a_nID);
++      }
++   }
++   static function RestoreUnlearnedSpecs()
++   {
++      var _loc1_;
++      if(LevelUp.aUnlearnedSpecs.length == 0)
++      {
++         return undefined;
++      }
++      while(LevelUp.aUnlearnedSpecs.length > 0)
++      {
++         _loc1_ = LevelUp.aUnlearnedSpecs[0];
++         ExternalCommands.SendMessageArgs("GUILevelUp.CharGenAssignAbility",LevelUp.CreatureID,_loc1_,1);
++         LevelUp.nSpecializationPoints--;
++         LevelUp.aUnlearnedSpecs.splice(0,1);
++      }
++      LevelUp.UpdateSpecPoints();
+    }
+    static function UpdateSpecPoints()
+    {

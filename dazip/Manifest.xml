@@ -9,9 +9,16 @@
 					<![CDATA[Interactive Respec]]>
 				</en-us>
 			</Title>
-			<Description DefaultText="Full interactive respec: lower skills, talents, spells and attributes at any time. Use 'runscript respec1'. Respec mechanism credited to Peter 'weriK' Kovacs (Character Respecialization, Nexus mod 14), reused under his permission grant.">
+			<Description DefaultText="Open the level-up screen for the current character and edit an existing build: lower skills, talents, spells and attributes, then re-spend the points. Also does a full respec. Use 'runscript respec1'. Respec mechanism credited to Peter 'weriK' Kovacs (Character Respecialization, Nexus mod 14), reused under his permission grant.">
 				<en-us>
-					<![CDATA[Full interactive respec: lower skills, talents, spells and attributes at any time, then re-open the level-up screen. Open the console and type: runscript respec1
+					<![CDATA[Opens the level-up screen for the current character, pre-filled with their existing build, so skills, talents, spells and attributes can be edited without rebuilding from scratch.
+
+Open the console and type:
+    runscript respec1              open the level-up screen, changing nothing
+    runscript respec1 respec       full respec, then reopen the level-up screen
+    runscript respec1 <skill> [n]  lower a skill by n ranks (default 1)
+
+Requires at least one unspent skill or talent point for the screen to appear, because the game skips the level-up scenes when there is nothing to spend.
 
 Respecialisation mechanism credited to Peter 'weriK' Kovacs ("Character Respecialization", Nexus mod 14), reused under his permission grant (modify and release improvements, with credit).]]>
 				</en-us>
@@ -24,7 +31,7 @@ Respecialisation mechanism credited to Peter 'weriK' Kovacs ("Character Respecia
 			<URL DefaultText="">
 			</URL>
 			<ReleaseDate>16/10/2026</ReleaseDate>
-			<Version>0.2</Version>
+			<Version>0.3</Version>
 			<GameVersion/>
 			<Type>1</Type>
 			<Publisher DefaultText="">
@@ -57,7 +64,7 @@ Respecialisation mechanism credited to Peter 'weriK' Kovacs ("Character Respecia
 			<URL DefaultText="">
 			</URL>
 			<ReleaseDate>16/10/2026</ReleaseDate>
-			<Version>0.2</Version>
+			<Version>0.3</Version>
 			<GameVersion/>
 			<Type>1</Type>
 			<Publisher DefaultText="">

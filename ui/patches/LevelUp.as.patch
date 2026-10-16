@@ -1,16 +1,16 @@
 ﻿diff --git a/scripts/__Packages/LevelUp.as b/scripts/__Packages/LevelUp.as
-index b557813..81ae76a 100644
+index 9793693..8ba942d 100644
 --- a/scripts/__Packages/LevelUp.as
 +++ b/scripts/__Packages/LevelUp.as
-@@ -17,6 +17,7 @@ class LevelUp
+@@ -23,6 +23,7 @@ class LevelUp
     static var mcSpecDescription = null;
     static var mcSpecPoints = null;
     static var aNewSpecPoints = new Array();
 +   static var aUnlearnedSpecs;
     static var nSpecializationsFound = 0;
+    static var mcSpecializations = null;
     static var nExitPoint = 0;
-    static var LEVELUP_EXIT_ABORT = 0;
-@@ -28,6 +29,7 @@ class LevelUp
+@@ -35,6 +36,7 @@ class LevelUp
     static function StartScene()
     {
        LevelUp.CreatureID = Number(ExternalCommands.GetValue("CharGenCreature.ID"));
@@ -18,7 +18,7 @@ index b557813..81ae76a 100644
        LevelUp.nExitPoint = LevelUp.LEVELUP_EXIT_ABORT;
        LevelUp.m_Observers = new TokenObserverGroup();
        SharedLibrary.AbilityIcon.m_AbilityIconObservers = LevelUp.m_Observers;
-@@ -219,6 +221,7 @@ class LevelUp
+@@ -240,6 +242,7 @@ class LevelUp
        {
           LevelUp.UnspendSpecializationPoint(LevelUp.aNewSpecPoints[0]);
        }
@@ -26,7 +26,7 @@ index b557813..81ae76a 100644
     }
     static function RevertAttributes()
     {
-@@ -251,6 +254,7 @@ class LevelUp
+@@ -272,6 +275,7 @@ class LevelUp
     }
     static function UnspendSpecializationPoint(a_nID)
     {
@@ -34,7 +34,7 @@ index b557813..81ae76a 100644
        ExternalCommands.SendMessageArgs("GUILevelUp.CharGenAssignAbility",LevelUp.CreatureID,-1 * a_nID,1);
        ExternalCommands.PlayGUISound(SoundEvents.ST_STICKYBUTTON_CLICK);
        LevelUp.nSpecializationPoints++;
-@@ -264,6 +268,59 @@ class LevelUp
+@@ -285,6 +289,59 @@ class LevelUp
           }
           _loc1_ = _loc1_ + 1;
        }

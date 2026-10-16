@@ -1,8 +1,8 @@
 ﻿diff --git a/scripts/__Packages/ClassButton.as b/scripts/__Packages/ClassButton.as
-index 0f0da8d..b7f1b3f 100644
+index 769e652..9cdb4f0 100644
 --- a/scripts/__Packages/ClassButton.as
 +++ b/scripts/__Packages/ClassButton.as
-@@ -83,9 +83,12 @@ class ClassButton extends GUI.Element
+@@ -88,9 +88,12 @@ class ClassButton extends GUI.Element
     {
        if(!this.bGrey)
        {

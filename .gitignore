@@ -11,9 +11,14 @@ ui/_test_out.swf
 # BioWare: extracted game resources and decompiled ActionScript.
 # These are read as build inputs but must never be redistributed.
 ui/vanilla_levelup.swf
+ui/_base_guiexport/
 ui/vanilla_scripts/
 ref/script.ldf
 ref/cscript.ldf
+ref/levelup_*.swf
+ref/_p2scripts/
+ref/_p3scripts/
+ref/_carryover/
 
 # FtG UI Mod: no licence confirmation was ever obtained for this content.
 ui/_ftg/

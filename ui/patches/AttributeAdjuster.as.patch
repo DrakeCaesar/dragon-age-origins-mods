@@ -1,13 +1,13 @@
 ﻿diff --git a/scripts/__Packages/AttributeAdjuster.as b/scripts/__Packages/AttributeAdjuster.as
-index 51adbe4..7781900 100644
+index dc089bc..16e9c35 100644
 --- a/scripts/__Packages/AttributeAdjuster.as
 +++ b/scripts/__Packages/AttributeAdjuster.as
-@@ -75,7 +75,7 @@ class AttributeAdjuster extends GUI.Element
+@@ -85,7 +85,7 @@ class AttributeAdjuster extends GUI.Element
           );
           this.OnButtonAction = function()
           {
--            if(this._parent.nPoints > 0)
-+            if(this._parent.nPoints > 0 && AttributesScene.CanRemovePoint(this._parent.nID))
+-            if(AttributesScene.PointsSpentOnAttribute(this._parent.nID) > 0)
++            if(AttributesScene.PointsSpentOnAttribute(this._parent.nID) > 0 && AttributesScene.CanRemovePoint(this._parent.nID))
              {
                 this._parent.RefundPoint();
              }

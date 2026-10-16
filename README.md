@@ -136,9 +136,24 @@ compile output and the Documents folder automatically. Both accept overrides
 **Not in this repo, by design.** The vanilla movie, the decompiled BioWare
 ActionScript and the engine `.ldf` files are build *inputs* and are `.gitignore`d
 — they are BioWare's and are not redistributed here. Only our own patches
-against them are. To rebuild the movie you will need to extract
-`levelup.gfx` from `guiexport.erf` and prepend an 8-byte `FWS` header to make it
-parseable by FFDec.
+against them are.
+
+**Take the movie from the newest patch, not from `guiexport.erf`.** The game
+ships several revisions of the level-up screen and patches override the base
+package:
+
+```
+packages\core\data\guiexport.erf      levelup.gfx   <- base game, PRE-patch
+packages\core\patch\patch002.erf      levelup.gfx
+packages\core\patch\patch003.erf      levelup.gfx   <- the one the game uses
+```
+
+Patching the `guiexport` copy produces a movie that renders without the
+post-patch art fixes (button skins, specialization icons, portrait framing), so
+always base the build on the highest-numbered patch that ships a `levelup.gfx`.
+
+`levelup.gfx` is a headerless SWF: prepending an 8-byte `FWS` header
+(`"FWS"` + version `9` + total length) makes it parseable by FFDec.
 
 **No third-party UI mod is required or bundled.**
 

@@ -148,6 +148,8 @@ if ($Ftg -or $ftgOn) {
     } else {
         Write-Warning "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing; shipping the vanilla-based movie, which will hide that mod's level-up changes. Build it with: ui\build-movie.ps1 -Movie levelup_ftg -Java <java>"
     }
+} else {
+    Write-Host "UI       : FtG UI Mod is not enabled -> using the vanilla-based movie"
 }
 
 $uiMovies = @(
@@ -172,6 +174,25 @@ if ($NoUi) {
     $uiErf = Join-Path $uiDir "${UID_UI}_modcore.erf"
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
     Write-Host "UI       -> $uiErf  (target: core)"
+
+    # The same movie also goes to the core override folder. Two addins can ship
+    # the same core resource and AddIns.xml does not decide who wins: with FtG UI
+    # Mod enabled its levelup.swf is the one the game uses, no matter that our
+    # AddInItem has a higher Priority and sits last in the list. Resources under
+    # packages\core\override are merged after the addins, so this copy cannot be
+    # outranked, and it is always the same build as the erfs above.
+    $ovrDir  = Join-Path $daDocs 'packages\core\override'
+    $ovrFile = Join-Path $ovrDir 'levelup.swf'
+    $srcHash = (Get-FileHash -LiteralPath (Join-Path $root $uiFile)).Hash
+    if (-not (Test-Path -LiteralPath $ovrDir)) { New-Item -ItemType Directory -Force -Path $ovrDir | Out-Null }
+    if (Test-Path -LiteralPath $ovrFile) {
+        if (((Get-FileHash -LiteralPath $ovrFile).Hash -ne $srcHash) -and -not (Test-Path -LiteralPath "$ovrFile.bak")) {
+            Copy-Item -LiteralPath $ovrFile -Destination "$ovrFile.bak"
+            Write-Host "Override : backed up someone else's levelup.swf to levelup.swf.bak"
+        }
+    }
+    Copy-Item -LiteralPath (Join-Path $root $uiFile) -Destination $ovrFile -Force
+    Write-Host "Override : $uiFile -> $ovrFile  (outranks every addin's levelup.swf)"
 }
 
 # --------------------------------------------------------- 4. register

@@ -5,20 +5,19 @@
 .DESCRIPTION
     One script for the whole packaging story.
 
-    Build (default) produces a .dazip containing both addins the mod needs:
+    Build (default) produces a .dazip containing the one addin the mod needs:
 
         Manifest.xml
         Contents/addins/respec_proto/module/data/respec_proto_module.erf
-            the compiled respec1.ncs, extending "Single Player" so that
-            `runscript respec1` resolves
-        Contents/addins/respec_proto_ui/core/data/respec_proto_ui_modcore.erf
-            the patched level-up screen, extending "core", which is where the
-            level-up resource actually lives
+            the compiled respec1.ncs, so that `runscript respec1` resolves
+        Contents/addins/respec_proto/core/data/respec_proto_modcore.erf
+            the patched level-up screen, which only resolves from the core mount
         Contents/packages/*/data/*_package.erf
             empty package stubs, for mod-manager compatibility
 
-    Two addins are required because a script addin and a UI addin need
-    different ExtendedModuleUID values, and one AddInItem can only carry one.
+    Both trees sit in one addin, like no_helmet_hack and chef_bodini_itupg: an
+    addin's core\ and module\ folders are mounted by folder name, while
+    ExtendedModuleUID only says which module the addin belongs to.
 
     Install extracts every addin under Contents/addins/ and registers every
     <AddInItem> from the dazip's own Manifest.xml, so the registration can
@@ -64,8 +63,8 @@ $ErrorActionPreference = 'Stop'
 $root       = Split-Path -Parent $PSScriptRoot            # project root
 . (Join-Path $PSScriptRoot 'ui-base.ps1')
 $ScriptName = 'respec1'
-$UID_SP     = 'respec_proto'                              # script half
-$UID_UI     = 'respec_proto_ui'                           # UI half
+$UID_SP     = 'respec_proto'                              # the only addin
+$UID_UI     = $UID_SP                                     # both trees live here
 
 $manifest = Join-Path $root 'dazip\Manifest.xml'
 if (-not $Out) { $Out = Join-Path $root 'build\respec_proto.dazip' }
@@ -161,11 +160,12 @@ if ($Uninstall) {
     if (-not (Test-Path -LiteralPath $backup)) { Copy-Item -LiteralPath $addInsXml -Destination $backup }
     Copy-Item -LiteralPath $addInsXml -Destination "$addInsXml.bak2" -Force
 
-    foreach ($uid in @($UID_SP, $UID_UI)) {
+    # The old two-addin layout used respec_proto_ui, so uninstall clears it too.
+    foreach ($uid in @($UID_SP, $UID_UI, 'respec_proto_ui') | Select-Object -Unique) {
         $removed = Remove-AddInEntry -Path $addInsXml -Uid $uid
         $dir     = Join-Path $daDocs "AddIns\$uid"
         if (Test-Path -LiteralPath $dir) { Remove-Item -Recurse -Force $dir }
-        Write-Host "Uninstalled '$uid'  (entry removed: $removed)"
+        if ($removed) { Write-Host "Uninstalled '$uid'  (entry removed: $removed)" }
     }
     Write-Host ""
     Write-Host "Backups: AddIns.xml.bak, AddIns.xml.bak2"
@@ -231,7 +231,7 @@ $files['Manifest.xml'] = Join-Path $stage 'Manifest.xml'
 $files["Contents/addins/$UID_SP/module/data/${UID_SP}_module.erf"]      = Join-Path $stage "Contents\addins\$UID_SP\module\data\${UID_SP}_module.erf"
 $files["Contents/packages/$UID_SP/data/${UID_SP}_package.erf"]          = Join-Path $stage "Contents\packages\$UID_SP\data\${UID_SP}_package.erf"
 if ($uiErf) {
-    $files["Contents/addins/$UID_UI/core/data/${UID_UI}_modcore.erf"]   = Join-Path $stage "Contents\addins\$UID_UI\core\data\${UID_UI}_modcore.erf"
+    $files["Contents/addins/$UID_SP/core/data/${UID_SP}_modcore.erf"]   = Join-Path $stage "Contents\addins\$UID_SP\core\data\${UID_SP}_modcore.erf"
     $files["Contents/packages/$UID_UI/data/${UID_UI}_package.erf"]       = Join-Path $stage "Contents\packages\$UID_UI\data\${UID_UI}_package.erf"
 }
 
@@ -243,7 +243,7 @@ Copy-Item -LiteralPath $manifest -Destination $files['Manifest.xml']
 [System.IO.File]::WriteAllBytes($files["Contents/addins/$UID_SP/module/data/${UID_SP}_module.erf"], $moduleErf)
 [System.IO.File]::WriteAllBytes($files["Contents/packages/$UID_SP/data/${UID_SP}_package.erf"], $stubErf)
 if ($uiErf) {
-    [System.IO.File]::WriteAllBytes($files["Contents/addins/$UID_UI/core/data/${UID_UI}_modcore.erf"], $uiErf)
+    [System.IO.File]::WriteAllBytes($files["Contents/addins/$UID_SP/core/data/${UID_SP}_modcore.erf"], $uiErf)
     [System.IO.File]::WriteAllBytes($files["Contents/packages/$UID_UI/data/${UID_UI}_package.erf"], $stubErf)
 }
 

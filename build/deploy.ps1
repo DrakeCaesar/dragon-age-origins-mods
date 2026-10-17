@@ -49,18 +49,47 @@ $manifest  = Join-Path $root 'dazip\Manifest.xml'
 if (Get-Process DAOrigins -ErrorAction SilentlyContinue) {
     throw "Dragon Age is running. Close the game before deploying."
 }
+# The Toolset can hold an addin's erfs open while a project is loaded, which
+# makes the write below fail with a sharing violation. Test the files rather
+# than the process: having the Toolset open is fine as long as it is not
+# holding anything we need to replace.
+$UID_ADDIN = 'respec_proto'
+foreach ($p in @(
+    (Join-Path $daDocs "AddIns\$UID_ADDIN\module\data\${UID_ADDIN}_module.erf"),
+    (Join-Path $daDocs "AddIns\$UID_ADDIN\core\data\${UID_ADDIN}_modcore.erf")
+)) {
+    if (-not (Test-Path -LiteralPath $p)) { continue }
+    try {
+        $fs = [System.IO.File]::Open($p, 'Open', 'ReadWrite', 'None')
+        $fs.Close()
+    } catch {
+        throw "The Dragon Age Toolset is holding '$p' open. Close the Toolset (or its project) and deploy again."
+    }
+}
 if (-not (Test-Path -LiteralPath $addInsXml)) { throw "AddIns.xml not found at '$addInsXml'." }
 if (-not (Test-Path -LiteralPath $manifest))  { throw "Manifest not found at '$manifest'." }
 
 # ------------------------------------------------- locate the compiled script
 if (-not $Ncs) {
-    $exports = Get-ChildItem -Path (Join-Path $daDocs 'AddIns') -Recurse -Filter "$Script.ncs" -ErrorAction SilentlyContinue |
-               Where-Object { $_.FullName -like '*toolsetexport*' } |
-               Sort-Object LastWriteTime -Descending
+    # Prefer the Toolset's export where it sits inside our own addin, but NOT
+    # under a folder the game mounts: module\override and core\override are live
+    # mount points, so a loose respec1.ncs there is delivered a second time on
+    # top of the copy in the module erf. _toolsetexport keeps it as a build
+    # input the engine never reads.
+    $candidates = @(
+        (Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport\$Script.ncs"),
+        (Join-Path $daDocs "AddIns\$UID_ADDIN\module\override\toolsetexport\$Script.ncs")
+    )
+    $exports = $candidates | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Item -LiteralPath $_ }
+    if (-not $exports) {
+        $exports = Get-ChildItem -Path (Join-Path $daDocs 'AddIns') -Recurse -Filter "$Script.ncs" -ErrorAction SilentlyContinue |
+                   Where-Object { $_.FullName -like '*toolsetexport*' } |
+                   Sort-Object LastWriteTime -Descending
+    }
     if (-not $exports) {
         throw "No Toolset export of '$Script.ncs' found under '$daDocs\AddIns'. Compile it in the Toolset first, or pass -Ncs."
     }
-    $Ncs = $exports[0].FullName
+    $Ncs = ($exports | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 }
 if (-not (Test-Path -LiteralPath $Ncs)) { throw "Compiled script not found: '$Ncs'." }
 
@@ -99,27 +128,59 @@ function New-DaoErf {
     return $ms.ToArray()
 }
 
-# --------------------------------------------------------- 1. script addin
-# Must extend "Single Player" or the campaign never merges the module script.
-$UID_SP = 'respec_proto'
-$UID_UI = 'respec_proto_ui'
+# ------------------------------------------------------------ 1. one addin
+# Both halves live in one addin, the way no_helmet_hack and chef_bodini_itupg
+# do it: the addin's own core\ and module\ trees are mounted by their folder
+# names, while ExtendedModuleUID only says which module the addin belongs to.
+# That matters because the game lists one entry per AddInItem, and a split
+# layout showed up as a second "Interactive Respec (UI)" entry.
+$UID_ADDIN = 'respec_proto'
 
-$spDir = Join-Path $daDocs "AddIns\$UID_SP\module\data"
-New-Item -ItemType Directory -Force -Path $spDir | Out-Null
+$moduleDir = Join-Path $daDocs "AddIns\$UID_ADDIN\module\data"
+New-Item -ItemType Directory -Force -Path $moduleDir | Out-Null
 
 $moduleEntries = [ordered] @{}
 $moduleEntries["$Script.ncs"] = $ncsBytes
 
-$spErf = Join-Path $spDir "${UID_SP}_module.erf"
+$spErf = Join-Path $moduleDir "${UID_ADDIN}_module.erf"
 [System.IO.File]::WriteAllBytes($spErf, (New-DaoErf -Entries $moduleEntries))
 Write-Host "Script   -> $spErf  (target: Single Player)"
 
-# The script addin no longer ships UI resources. Drop any stale copy left from
-# the earlier one-addin layout so nothing is mounted from the wrong target.
-$staleCore = Join-Path $daDocs "AddIns\$UID_SP\core"
-if (Test-Path -LiteralPath $staleCore) {
-    Remove-Item -Recurse -Force $staleCore
-    Write-Host "Cleanup  : removed stale $staleCore"
+# module\override is a live mount point, so anything the Toolset drops into
+# module\override\toolsetexport is delivered a second time on top of the erf.
+# Fold it into _toolsetexport (never mounted) and remove the mounted copy.
+$mountedExport = Join-Path $daDocs "AddIns\$UID_ADDIN\module\override\toolsetexport"
+if (Test-Path -LiteralPath $mountedExport) {
+    $safeExport = Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport"
+    New-Item -ItemType Directory -Force -Path $safeExport | Out-Null
+    Get-ChildItem -LiteralPath $mountedExport -File | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $safeExport $_.Name) -Force
+    }
+    Remove-Item -LiteralPath $mountedExport -Recurse -Force
+    Write-Host "Cleanup  : module\override\toolsetexport is a mount point (duplicate script) - moved to _toolsetexport"
+}
+
+# The Toolset writes module\<uid>.cif into the addin. That file carries the
+# project's module metadata, including "Script = module_core", which registers
+# the addin as a module with its own event dispatch. With that in place the
+# engine keeps two copies of the chargen creature state, so a chargen message is
+# applied twice -- visible as an attribute moving 2 while our own counter moves
+# 1. The game does not need the cif (the module script is merged from the erf),
+# so keep it as a build artefact outside the mount tree instead of deleting it.
+$mountedCif = Join-Path $daDocs "AddIns\$UID_ADDIN\module\${UID_ADDIN}.cif"
+if (Test-Path -LiteralPath $mountedCif) {
+    $safeExport = Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport"
+    New-Item -ItemType Directory -Force -Path $safeExport | Out-Null
+    Move-Item -LiteralPath $mountedCif -Destination (Join-Path $safeExport "${UID_ADDIN}.cif") -Force
+    Write-Host "Cleanup  : moved module\${UID_ADDIN}.cif out of the mount tree (it registers a module event script)"
+}
+
+# The second addin of the old two-addin layout is gone; drop it so the game does
+# not keep listing it. Its content is rebuilt into the addin above and below.
+$staleUi = Join-Path $daDocs 'AddIns\respec_proto_ui'
+if (Test-Path -LiteralPath $staleUi) {
+    Remove-Item -Recurse -Force $staleUi
+    Write-Host "Cleanup  : removed the old second addin $staleUi"
 }
 
 # --------------------------------------------------------- 2. UI addin
@@ -152,11 +213,11 @@ if ($NoUi) {
         Write-Host "UI       : $($m.File) -> $($m.Name).swf  ($($bytes.Length) bytes)"
     }
 
-    $uiDir = Join-Path $daDocs "AddIns\$UID_UI\core\data"
+    $uiDir = Join-Path $daDocs "AddIns\$UID_ADDIN\core\data"
     New-Item -ItemType Directory -Force -Path $uiDir | Out-Null
-    $uiErf = Join-Path $uiDir "${UID_UI}_modcore.erf"
+    $uiErf = Join-Path $uiDir "${UID_ADDIN}_modcore.erf"
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
-    Write-Host "UI       -> $uiErf  (target: core)"
+    Write-Host "UI       -> $uiErf  (same addin, core tree)"
 
     # The same movie also goes to the core override folder, because the erfs are
     # not enough: with FtG UI Mod enabled its levelup.swf is the one the game
@@ -174,6 +235,18 @@ $backup = "$addInsXml.bak"
 if (-not (Test-Path -LiteralPath $backup)) { Copy-Item -LiteralPath $addInsXml -Destination $backup }
 
 $text = [System.IO.File]::ReadAllText($addInsXml)
+
+# UIDs this mod used to register but no longer ships. Without this the orphaned
+# entry would stay in AddIns.xml and the game would keep listing a second addin
+# whose folder no longer exists.
+foreach ($orphan in @('respec_proto_ui')) {
+    $pattern = '(?s)\s*<AddInItem[^>]*UID="' + [regex]::Escape($orphan) + '".*?</AddInItem>'
+    if ([regex]::IsMatch($text, $pattern)) {
+        $text = [regex]::Replace($text, $pattern, '')
+        Write-Host "Register : removed obsolete entry $orphan"
+    }
+}
+
 foreach ($m in $items) {
     $item   = $m.Value
     $uid    = [regex]::Match($item, 'UID="([^"]*)"').Groups[1].Value

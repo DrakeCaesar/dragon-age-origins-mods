@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/AbilityScene.as b/scripts/__Packages/AbilityScene.as
-index 97a3b58..a7731a2 100644
+index 97a3b58..54c9fdb 100644
 --- a/scripts/__Packages/AbilityScene.as
 +++ b/scripts/__Packages/AbilityScene.as
 @@ -114,6 +114,10 @@ class AbilityScene
@@ -13,7 +13,7 @@ index 97a3b58..a7731a2 100644
        var _loc4_ = true;
        var _loc5_ = -1;
        var _loc1_ = 0;
-@@ -134,13 +138,88 @@ class AbilityScene
+@@ -134,13 +138,134 @@ class AbilityScene
        {
           oClass.nPointsToSpend = oClass.nPointsToSpend + 1;
           AbilityScene.UpdatePointsToSpend(oClass);
@@ -51,6 +51,10 @@ index 97a3b58..a7731a2 100644
 +   }
 +   static function IsPrereqOfOwned(oClass, a_nID)
 +   {
++      if(AbilityScene.IsCombatTrainingPrereqOfOwned(a_nID))
++      {
++         return true;
++      }
 +      var sBase = AbilityScene.ChainTokenBase(oClass);
 +      var nCount;
 +      var _loc3_;
@@ -69,6 +73,48 @@ index 97a3b58..a7731a2 100644
 +            return true;
 +         }
 +         _loc3_ = _loc3_ + 1;
++      }
++      return false;
++   }
++   static function IsCombatTrainingPrereqOfOwned(a_nID)
++   {
++      // Combat Training is a skill, but talents and spells do not name it in
++      // prereqability. They carry a RequiresCombatTraining flag and the Rank
++      // they need, so the prereqability scan in IsPrereqOfOwned cannot see
++      // them and would happily refund a rank they still depend on.
++      //
++      // The four ranks are ABI ids 100100..100103; removing a_nID leaves
++      // ranks below it, so the surviving rank is a_nID - 100100.
++      if(a_nID < 100100 || a_nID > 100103)
++      {
++         return false;
++      }
++      var nRemaining = a_nID - 100100;
++      var aBases = new Array("CharGenCreature.Stats.SkillChains","CharGenCreature.Stats.SpellChains","CharGenCreature.Stats.TalentChains");
++      var _loc1_ = 0;
++      var _loc2_;
++      var _loc3_;
++      var _loc4_;
++      var _loc5_;
++      while(_loc1_ < aBases.length)
++      {
++         _loc2_ = aBases[_loc1_];
++         _loc3_ = Number(ExternalCommands.GetNumMembers(_loc2_));
++         _loc4_ = 0;
++         while(_loc4_ < _loc3_)
++         {
++            _loc5_ = SharedLibrary.Ability.LoadFromToken(_loc2_ + "." + _loc4_,true);
++            if(_loc5_.nDisplayState == SharedLibrary.Ability.DISPLAYSTATE_HAVE)
++            {
++               _loc5_.LoadDeferredAbilityInfo();
++               if(_loc5_.bRequiresCombatTraining && _loc5_.nRank > nRemaining)
++               {
++                  return true;
++               }
++            }
++            _loc4_ = _loc4_ + 1;
++         }
++         _loc1_ = _loc1_ + 1;
 +      }
 +      return false;
 +   }

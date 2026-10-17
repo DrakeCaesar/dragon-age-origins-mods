@@ -80,7 +80,7 @@ if (-not (Test-Path -LiteralPath $patches))    { throw "Patch folder not found: 
 $checks = @{
     'levelup' = @{
         expected = @{
-            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
+            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned', 'IsCombatTrainingPrereqOfOwned')
             'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
             'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
@@ -103,7 +103,7 @@ $checks = @{
     # and InitBookMenu proves the build really is based on their movie.
     'levelup_ftg' = @{
         expected = @{
-            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
+            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned', 'IsCombatTrainingPrereqOfOwned')
             'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
             'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')

@@ -31,7 +31,9 @@
 param(
     [string] $Ncs,
     [switch] $NoUi,
-    [switch] $Ftg
+    [switch] $Ftg,
+    [ValidateSet('Starting', 'Ten')]
+    [string] $AttributeFloor = 'Starting'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -189,11 +191,17 @@ if (Test-Path -LiteralPath $staleUi) {
 # its own levelup.swf in the same "core" mount point, so the choice has to be
 # made at install time and both paths must agree. -Ftg forces the FtG base.
 . (Join-Path $PSScriptRoot 'ui-base.ps1')
-$uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg
+$uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg -Floor $AttributeFloor.ToLower()
 $uiFile = $uiBase.File
 if ($uiBase.Note) { Write-Warning $uiBase.Note }
 elseif ($uiBase.Base -eq 'ftg') { Write-Host "UI       : FtG UI Mod is enabled -> building on its level-up movie" }
 else { Write-Host "UI       : FtG UI Mod is not enabled -> using the vanilla-based movie" }
+if ($uiBase.Floor -eq 'ten') {
+    Write-Host "UI       : attribute floor = flat 10 (rebuild from scratch; the character's starting values are not restored)"
+}
+else {
+    Write-Host "UI       : attribute floor = 10 + race + class adjustments (matches character creation)"
+}
 
 $uiMovies = @(
     @{ Name = 'levelup';   File = $uiFile }

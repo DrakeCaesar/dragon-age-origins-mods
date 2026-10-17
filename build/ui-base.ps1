@@ -19,12 +19,25 @@ function Get-DaoLevelupMovie {
         Picks the level-up movie to ship for the current addin state.
     .OUTPUTS
         Hashtable: File (repo-relative), Base ('vanilla' or 'ftg'),
-        FtgEnabled (whether the addin is on), Note (warning text or $null).
+        Floor ('starting' or 'ten'), FtgEnabled, Note (warning text or $null).
+    .DESCRIPTION
+        Four movies can be built, from the two movie bases times the two
+        attribute floors:
+
+            ui\levelup.swf          vanilla base, starting-value floor
+            ui\levelup_ten.swf      vanilla base, flat 10 floor
+            ui\levelup_ftg.swf      FtG base,     starting-value floor
+            ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+
+        A missing flat-10 build falls back to the starting-value one, because
+        that is the accurate behaviour rather than the permissive one.
     #>
     param(
         [Parameter(Mandatory)] [string] $AddInsXml,
         [Parameter(Mandatory)] [string] $Root,
-        [switch] $ForceFtg
+        [switch] $ForceFtg,
+        [ValidateSet('starting', 'ten')]
+        [string] $Floor = 'starting'
     )
 
     $ftgEnabled = $false
@@ -33,22 +46,38 @@ function Get-DaoLevelupMovie {
         if ($item.Success -and $item.Value -match 'Enabled="1"') { $ftgEnabled = $true }
     }
 
-    if (-not ($ForceFtg -or $ftgEnabled)) {
-        return @{ File = 'ui\levelup.swf'; Base = 'vanilla'; FtgEnabled = $false; Note = $null }
+    $useFtg = $ForceFtg -or $ftgEnabled
+    $base   = if ($useFtg) { 'ftg' } else { 'vanilla' }
+    $name   = 'levelup' + $(if ($useFtg) { '_ftg' } else { '' }) + $(if ($Floor -eq 'ten') { '_ten' } else { '' })
+    $rel    = "ui\$name.swf"
+
+    if (Test-Path -LiteralPath (Join-Path $Root $rel)) {
+        return @{ File = $rel; Base = $base; Floor = $Floor; FtgEnabled = $ftgEnabled; Note = $null }
     }
 
-    if (Test-Path -LiteralPath (Join-Path $Root 'ui\levelup_ftg.swf')) {
-        return @{ File = 'ui\levelup_ftg.swf'; Base = 'ftg'; FtgEnabled = $ftgEnabled; Note = $null }
+    # Missing flat-10 build: ship the accurate starting-value one instead.
+    if ($Floor -eq 'ten') {
+        $fallback = 'ui\levelup' + $(if ($useFtg) { '_ftg' } else { '' }) + '.swf'
+        if (Test-Path -LiteralPath (Join-Path $Root $fallback)) {
+            return @{
+                File       = $fallback
+                Base       = $base
+                Floor      = 'starting'
+                FtgEnabled = $ftgEnabled
+                Note       = "$rel not found, so the starting-value floor is being shipped instead of the flat-10 one. Build it with: ui\build-movie.ps1 -Movie $name -AttributeFloor Ten -Java <java>"
+            }
+        }
     }
 
     if ($ForceFtg) {
-        throw "ui\levelup_ftg.swf not found. Build it with ui\build-movie.ps1 -Movie levelup_ftg."
+        throw "$rel not found. Build it with: ui\build-movie.ps1 -Movie $(if ($useFtg) { 'levelup_ftg' } else { 'levelup' }) -AttributeFloor $(if ($Floor -eq 'ten') { 'Ten' } else { 'Starting' })."
     }
     return @{
         File       = 'ui\levelup.swf'
         Base       = 'vanilla'
+        Floor      = 'starting'
         FtgEnabled = $true
-        Note       = "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing, so the vanilla-based movie is being shipped and that mod's level-up changes will be hidden. Build it with: ui\build-movie.ps1 -Movie levelup_ftg -Java <java>"
+        Note       = "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing, so the vanilla-based movie is being shipped and that mod's level-up changes will be hidden. Build it with: ui\build-movie.ps1 -Movie levelup_ftg"
     }
 }
 

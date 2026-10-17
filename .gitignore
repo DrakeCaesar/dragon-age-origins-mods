@@ -4,7 +4,9 @@ build/stage/
 build/*.dazip
 src/*.ncs
 ui/levelup.swf
+ui/levelup_ten.swf
 ui/levelup_ftg.swf
+ui/levelup_ftg_ten.swf
 
 # ------------------------------------------------- third-party, NOT ours
 # BioWare: extracted game resources and decompiled ActionScript.

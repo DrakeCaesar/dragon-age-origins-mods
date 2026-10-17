@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Rebuilds a patched UI movie from its pinned base export plus its patches.
 
@@ -29,7 +29,16 @@
     Java executable.
 
 .PARAMETER Out
-    Output path. Default: ui\<Movie>.swf
+    Output path. Default: ui\<Movie>.swf, or ui\<Movie>_ten.swf with
+    -AttributeFloor Ten.
+
+.PARAMETER AttributeFloor
+    Lowest an attribute may be refunded to.
+      Starting (default) - 10 + race + class: the character's real starting
+                           values, so points it never spent cannot come back.
+      Ten                - a flat 10 on every attribute, so a rebuild starts
+                           from scratch, at the cost of the starting values.
+    Both are built and shipped as separate movies; see build\ui-base.ps1.
 
 .EXAMPLE
     powershell -File ui\build-movie.ps1 -Movie levelup -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
@@ -39,7 +48,9 @@ param(
     [string] $Movie = 'levelup',
     [string] $FfdecJar,
     [string] $Java = 'java',
-    [string] $Out
+    [string] $Out,
+    [ValidateSet('Starting', 'Ten')]
+    [string] $AttributeFloor = 'Starting'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,8 +59,10 @@ $here     = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyIn
 $movieDir = Join-Path $here "movies\$Movie"
 if (-not (Test-Path -LiteralPath $movieDir)) { throw "Movie folder not found: '$movieDir'." }
 
+$floorSuffix = if ($AttributeFloor -eq 'Ten') { '_ten' } else { '' }
+
 if (-not $FfdecJar) { $FfdecJar = Join-Path $env:TEMP 'ffdec\ffdec.jar' }
-if (-not $Out)      { $Out      = Join-Path $here "$Movie.swf" }
+if (-not $Out)      { $Out      = Join-Path $here "$Movie$($floorSuffix).swf" }
 
 $vanilla    = Join-Path $movieDir 'vanilla.swf'
 $baseExport = Join-Path $movieDir '_base'
@@ -68,7 +81,7 @@ $checks = @{
     'levelup' = @{
         expected = @{
             'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
-            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()')
+            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
             'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
             'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
@@ -77,6 +90,9 @@ $checks = @{
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            # The attribute bonus must be resolved from RACE_base by name. Hard-coded
+            # id comparisons are the bug that credits Willpower with Dwarf's +2 Con.
+            'scripts\__Packages\AttributesScene.as' = @('nID == 1 || nID == 2', 'nID == 5 || nID == 6')
             # Diagnostic markers from an earlier debugging round. They must never
             # reappear: the level-up name field is not ours to write to.
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
@@ -88,7 +104,7 @@ $checks = @{
     'levelup_ftg' = @{
         expected = @{
             'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
-            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()')
+            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
             'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
             'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
@@ -97,6 +113,7 @@ $checks = @{
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            'scripts\__Packages\AttributesScene.as' = @('nID == 1 || nID == 2', 'nID == 5 || nID == 6')   # see above
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')   # see above
         }
     }
@@ -125,6 +142,21 @@ try {
     }
 } finally {
     Pop-Location
+}
+
+# ------------------------------------------- 2b. pick the attribute floor
+# Both floors are the same source with the flag flipped, so one patch set and
+# one movie base produce both variants and they cannot drift apart.
+$floorFile = Join-Path $stage 'scripts\__Packages\AttributesScene.as'
+if (Test-Path -LiteralPath $floorFile) {
+    $text = Get-Content -LiteralPath $floorFile -Raw
+    $want = if ($AttributeFloor -eq 'Ten') { 'false' } else { 'true' }
+    $new  = [regex]::Replace($text, '(static var UseStartingValueFloor = )(true|false)(;)', { param($m) $m.Groups[1].Value + $want + $m.Groups[3].Value })
+    if ($new -eq $text -and $text -notlike "*UseStartingValueFloor = $want*") {
+        throw "Could not set UseStartingValueFloor in '$floorFile'."
+    }
+    Set-Content -LiteralPath $floorFile -Value $new -Encoding utf8 -NoNewline
+    Write-Host "Floor   : $AttributeFloor (UseStartingValueFloor = $want)"
 }
 
 # ----------------------------------------------------- 3. verify the edits
@@ -157,3 +189,4 @@ if (-not (Test-Path -LiteralPath $Out)) { throw "FFDec import produced no output
 
 Write-Host ""
 Write-Host "Built   : $Out  ($((Get-Item -LiteralPath $Out).Length) bytes)"
+

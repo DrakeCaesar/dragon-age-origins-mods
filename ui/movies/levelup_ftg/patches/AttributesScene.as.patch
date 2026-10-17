@@ -1,7 +1,13 @@
 ﻿diff --git a/scripts/__Packages/AttributesScene.as b/scripts/__Packages/AttributesScene.as
-index e1adda0..ef6365c 100644
+index e1adda0..9ac8505 100644
 --- a/scripts/__Packages/AttributesScene.as
 +++ b/scripts/__Packages/AttributesScene.as
+@@ -1,4 +1,4 @@
+-class AttributesScene
++﻿class AttributesScene
+ {
+    var AddBehaviour;
+    var Image_mc;
 @@ -11,6 +11,7 @@ class AttributesScene
     var pointsleft_mc_init;
     var previous_mc_init;
@@ -10,7 +16,19 @@ index e1adda0..ef6365c 100644
     static var mcDescription;
     static var mcDescriptionHeader;
     static var ATTRIBUTES_BEGIN = 1;
-@@ -33,12 +34,18 @@ class AttributesScene
+@@ -23,6 +24,11 @@ class AttributesScene
+    static var SELECT_ATTRIBUTE_STRREF = 239724;
+    static var m_bPointsReadIn = false;
+    static var bLevelUp = false;
++   // true  : refundable floor is 10 + race + class, i.e. the character's real
++   //         starting values, so nothing the player never spent comes back.
++   // false : floor is a flat 10 on every attribute, letting you rebuild from
++   //         scratch. Costs a debug point per attribute on most characters.
++   static var UseStartingValueFloor = true;
+    static var parentClass = null;
+    static var m_mcNextButton = null;
+    function AttributesScene()
+@@ -33,12 +39,18 @@ class AttributesScene
        AttributesScene.bLevelUp = levelUp;
        AttributesScene.parentClass = parent;
        AttributesScene.m_aAttributes = new Array();
@@ -29,7 +47,7 @@ index e1adda0..ef6365c 100644
        _root.PortraitPicture_mc_init = function()
        {
           var _loc2_ = ExternalCommands.GetValue("CharGenCreature.Portrait");
-@@ -111,8 +118,14 @@ class AttributesScene
+@@ -111,8 +123,14 @@ class AttributesScene
                 this.SetText(Localization.Strings.LOC_RESET);
                 this.OnButtonAction = function()
                 {
@@ -46,15 +64,15 @@ index e1adda0..ef6365c 100644
                 };
              };
              this.next_mc_init = function()
-@@ -261,10 +274,97 @@ class AttributesScene
+@@ -261,10 +279,153 @@ class AttributesScene
        var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
        while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
        {
 -         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_]);
 +         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_] - AttributesScene.m_aSeedAttributes[_loc1_]);
-+         _loc1_ = _loc1_ + 1;
-+      }
-+   }
+          _loc1_ = _loc1_ + 1;
+       }
+    }
 +   static function SeedExistingAllocations()
 +   {
 +      var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
@@ -65,50 +83,106 @@ index e1adda0..ef6365c 100644
 +      {
 +         _loc2_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Total"));
 +         _loc3_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Modifier"));
-+         _loc4_ = _loc2_ - _loc3_ - 10 - AttributesScene.RaceAttributeBonus(_loc1_);
++         _loc4_ = _loc2_ - _loc3_ - AttributesScene.AttributeFloor(_loc1_);
 +         if(_loc4_ < 0)
 +         {
 +            _loc4_ = 0;
 +         }
 +         AttributesScene.m_aAttributes[_loc1_] = _loc4_;
 +         AttributesScene.m_aSeedAttributes[_loc1_] = _loc4_;
-          _loc1_ = _loc1_ + 1;
-       }
-    }
++         _loc1_ = _loc1_ + 1;
++      }
++   }
++   static function AttributeFloor(nID)
++   {
++      // The lowest a "spent" allocation can be refunded to. Points below this
++      // were never the player's to spend, so they must not come back.
++      if(!AttributesScene.UseStartingValueFloor)
++      {
++         return 10;
++      }
++      return 10 + AttributesScene.RaceAttributeBonus(nID) + AttributesScene.ClassAttributeBonus(nID);
++   }
 +   static function RaceAttributeBonus(nID)
 +   {
++      // nID here is a properties.2da row id (1 Str, 2 Dex, 3 Will, 4 Mag,
++      // 5 Cun, 6 Con), NOT an attributes.2da id (which orders Con 3,
++      // Int 4, Will 5, Mag 6). The two id spaces disagree, so never map
++      // ids directly to RACE_base columns: resolve the stat name first and
++      // look the adjust column up by name.
 +      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Stats.Race"));
-+      if(_loc1_ == 1)
++      if(_loc1_ < 1)
 +      {
-+         if(nID == 1 || nID == 2)
-+         {
-+            return 1;
-+         }
-+         if(nID == 3)
-+         {
-+            return 2;
-+         }
++         return 0;
 +      }
-+      else if(_loc1_ == 2)
++      return AttributesScene.AdjustFromTable(_2DA.TABLE_RACE,_loc1_,nID);
++   }
++
++   static function ClassAttributeBonus(nID)
++   {
++      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes.27.Total"));
++      if(_loc1_ < 1)
 +      {
-+         if(nID == 5 || nID == 6)
-+         {
-+            return 2;
-+         }
++         return 0;
 +      }
-+      else if(_loc1_ == 3)
++      return AttributesScene.AdjustFromTable(_2DA.TABLE_CLASS,_loc1_,nID);
++   }
++   static function AdjustFromTable(nTable, nRow, nID)
++   {
++      // RACE_base and CLA_base abbreviate their columns (StrAdjust, DexAdjust,
++      // WillAdjust, MagAdjust, ConAdjust) and have no Cunning column at all.
++      // They also order those columns by attributes.2da's ids, while nID is a
++      // properties.2da row id, so the column has to be chosen by name here
++      // rather than derived from the stat's display name.
++      var _loc1_ = AttributesScene.AdjustColumnFor(nID);
++      if(_loc1_ == "")
 +      {
-+         if(nID == 1 || nID == 2 || nID == 4 || nID == 6)
-+         {
-+            return 1;
-+         }
++         return 0;
 +      }
-+      return 0;
++      var _loc2_ = ExternalCommands.Get2DAValueByColumnName(nTable,nRow,_loc1_);
++      if(_loc2_ == "" || _loc2_ == undefined || _loc2_ == "****")
++      {
++         return 0;
++      }
++      return Number(_loc2_);
++   }
++   static function AdjustColumnFor(nID)
++   {
++      if(nID == 1)
++      {
++         return "StrAdjust";
++      }
++      if(nID == 2)
++      {
++         return "DexAdjust";
++      }
++      if(nID == 3)
++      {
++         return "WillAdjust";
++      }
++      if(nID == 4)
++      {
++         return "MagAdjust";
++      }
++      if(nID == 5)
++      {
++         // Cunning is called Intelligence in the 2DAs, so its column is IntAdjust.
++         return "IntAdjust";
++      }
++      if(nID == 6)
++      {
++         return "ConAdjust";
++      }
++      return "";
 +   }
 +   static function CanRemovePoint(nID)
 +   {
-+      var fNew = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + nID + ".Base")) - 1;
-+      return !AttributesScene.IsAttributeRequiredAbove(nID,fNew);
++      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + nID + ".Base"));
++      if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))
++      {
++         return false;
++      }
++      return !AttributesScene.IsAttributeRequiredAbove(nID,_loc1_ - 1);
 +   }
 +   static function IsAttributeRequiredAbove(nID, fValue)
 +   {

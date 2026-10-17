@@ -100,6 +100,8 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 - a specialization cannot be removed while a talent or spell it unlocks is
   still picked
 - panes no longer revert when you navigate backwards
+- existing attributes are seeded so they can be taken back down, minus the
+  race bonus the character never spent
 - Reset reverts every pane, so it cannot leave the character inconsistent
 - `LevelUp.StartScene` no longer auto-levels when the engine never filled
   `CharGenCreature` in. The test was `GetValue("CharGenCreature.Stats.AutoLevelUp") != 0`,
@@ -109,6 +111,67 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 
 Everything is scoped to `bLevelUp`, so character creation behaves exactly as
 vanilla.
+
+### Attribute ids, column names, and Cunning
+
+Three different naming schemes meet here, and getting them crossed silently
+produces a bonus of 0 rather than an error.
+
+The screen walks six attribute rows by numeric id and takes the display name
+from `properties.2da`: **1 Str, 2 Dex, 3 Will, 4 Mag, 5 Cun, 6 Con**.
+`attributes.2da` numbers the same six differently (**3 Con, 4 Int, 5 Will,
+6 Mag**), and the adjust columns in `RACE_base.2da` and `CLA_base.2da` follow
+*that* order.
+
+Two further traps:
+
+- The columns are **abbreviated**: `StrAdjust`, `DexAdjust`, `WillAdjust`,
+  `MagAdjust`, `ConAdjust`. Appending `Adjust` to a display name builds
+  `"StrengthAdjust"`, which does not exist, and every lookup returns 0 — the
+  floor then collapses to a flat 10 and looks like it "works".
+- **Cunning is called Intelligence in the 2DAs.** It has no `CunAdjust` column
+  anywhere; it is `IntAdjust`. Without that mapping Cunning floors at 10 while
+  character creation shows 11.
+
+So the id-to-column map is explicit in `AdjustColumnFor`, and the table columns
+are read by name via `Get2DAValueByColumnName`. That call is supported — vanilla
+uses it in `RaceGenderScene.as`.
+
+### The attribute floor is a choice, and both are built
+
+Nothing in the game records "the points this character actually spent", so the
+mod has to decide the lowest value it will refund to:
+
+- **starting-value floor** — `10 + race adjust + class adjust` per attribute.
+  This is what the character was given, so the only thing that can come back is
+  what the player spent. A level-1 character who never allocated anything ends
+  with nothing to reclaim, which is correct but means the pane is inert for
+  them.
+- **flat 10 floor** — every attribute floors at 10, so a rebuild starts from a
+  blank slate. This is more useful for rebuilding, but it hands back the race
+  and class points too, which the character never spent.
+
+Since this is a preference rather than a defect, both are built and the
+installer picks:
+
+```
+powershell -File build\deploy.ps1 -Ftg -AttributeFloor Starting   # default
+powershell -File build\deploy.ps1 -Ftg -AttributeFloor Ten
+```
+
+The two are the same patch set with `UseStartingValueFloor` flipped at build
+time, so they cannot drift apart. `ui\build-all.ps1` builds all four
+combinations of movie base and floor:
+
+```
+ui\levelup.swf          vanilla base, starting-value floor
+ui\levelup_ten.swf      vanilla base, flat 10 floor
+ui\levelup_ftg.swf      FtG base,     starting-value floor
+ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+```
+
+Note that the point counter above the list is the engine's own
+(`Attributes.34`, the unspent attribute points), not something this mod seeds.
 
 ## Using this with FtG UI Mod
 

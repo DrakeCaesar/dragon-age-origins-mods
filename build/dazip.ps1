@@ -55,7 +55,9 @@ param(
     [switch] $Install,
     [switch] $Uninstall,
     [switch] $NoUi,
-    [switch] $Ftg
+    [switch] $Ftg,
+    [ValidateSet('Starting', 'Ten')]
+    [string] $AttributeFloor = 'Starting'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -319,7 +321,7 @@ try {
 
     # Installing locally is where the base can be chosen for this machine, the
     # same way deploy.ps1 does it, because the override file is what decides.
-    $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root
+    $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -Floor $AttributeFloor.ToLower()
     $movie  = Join-Path $root $uiBase.File
     if ($uiBase.Note) { Write-Warning $uiBase.Note }
     if (Test-Path -LiteralPath $movie) {

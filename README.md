@@ -110,6 +110,43 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 Everything is scoped to `bLevelUp`, so character creation behaves exactly as
 vanilla.
 
+## Using this with FtG UI Mod
+
+FtG UI Mod ships its **own** `levelup.swf`, in the same `core` mount point as
+this mod's. Two addins cannot both own that resource, so whichever loads last
+wins — and a stock build of this mod would either throw away that mod's
+level-up changes (if ours wins) or lose this mod's patches (if theirs wins).
+
+So the mod builds **on top of theirs** when it is enabled. The same eight
+patches, ported to their ActionScript, are applied to their movie:
+
+```
+ui\movies\levelup\      patches against the vanilla movie
+ui\movies\levelup_ftg\  the same intent, ported to FtG UI Mod's movie
+```
+
+`deploy.ps1` checks `AddIns.xml` for `FTG_UIMOD ... Enabled="1"` and picks the
+right base automatically; `-Ftg` forces the FtG base, and `dazip.ps1 -Ftg`
+packages it. Our UI addin is registered at `Priority="160"`, above FtG UI Mod's
+`100`, so our copy of the resource is the one that takes effect.
+
+Three of the eight files FtG's movie is patched in are byte-identical to
+vanilla's, so those patches apply untouched; `LevelUp.as` is restructured
+(their book-menu scaling), so that one is ported by hand.
+
+To rebuild the FtG variant, its movie has to be extracted from
+`AddIns\FTG_UIMOD\core\data\FTG_UIMOD_modcore.erf` into
+`ui\movies\levelup_ftg\vanilla.swf` first (it is a compressed `CWS` SWF, unlike
+the headerless vanilla ones), then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie levelup_ftg -Refresh
+powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie levelup_ftg
+```
+
+Nothing of that mod is redistributed: its movie is a local build input and is
+`.gitignore`d, and only our own patches against it are in this repo.
+
 ## Building
 
 The script must be compiled with the **Dragon Age Toolset** — there is no
@@ -145,6 +182,7 @@ and Java, plus the extracted vanilla movie. See [Notes](#notes).
 src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
+ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's movie
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
 build/dazip.ps1                     build, install and uninstall the .dazip

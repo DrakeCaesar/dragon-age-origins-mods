@@ -55,7 +55,8 @@ param(
     [string] $Out,
     [switch] $Install,
     [switch] $Uninstall,
-    [switch] $NoUi
+    [switch] $NoUi,
+    [switch] $Ftg
 )
 
 $ErrorActionPreference = 'Stop'
@@ -196,8 +197,11 @@ $moduleErf = New-DaoErf -Entries ([ordered] @{ "$ScriptName.ncs" = $ncsBytes })
 $stubErf   = New-DaoErf -Entries ([ordered] @{})          # 32 bytes, header only
 
 $uiErf  = $null
+# FtG UI Mod ships its own levelup.swf in the same "core" mount point, so a
+# package meant for people using that mod has to be layered on its movie.
+# Build it first: ui\build-movie.ps1 -Movie levelup_ftg  (see the README).
 $uiList = @(
-    @{ Name = 'levelup';   File = 'ui\levelup.swf' }
+    @{ Name = 'levelup';   File = $(if ($Ftg) { 'ui\levelup_ftg.swf' } else { 'ui\levelup.swf' }) }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

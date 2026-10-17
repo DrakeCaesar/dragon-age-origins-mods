@@ -30,7 +30,8 @@
 [CmdletBinding()]
 param(
     [string] $Ncs,
-    [switch] $NoUi
+    [switch] $NoUi,
+    [switch] $Ftg
 )
 
 $ErrorActionPreference = 'Stop'
@@ -124,8 +125,33 @@ if (Test-Path -LiteralPath $staleCore) {
 # --------------------------------------------------------- 2. UI addin
 # One movie is patched: the level-up screen itself, which is what makes an
 # existing build editable once the screen is open.
+#
+# FtG UI Mod also ships a levelup.swf, in the same "core" mount point, so the
+# two addins fight over the same resource. Shipping the vanilla-based movie
+# while that mod is enabled would throw its level-up changes away, and shipping
+# ours untouched would lose this mod's patches. So when FtG UI Mod is enabled
+# the build is layered on its movie instead: same patches, applied to their
+# ActionScript, which keeps both sets of changes. -Ftg forces that base.
+$uiFile = 'ui\levelup.swf'
+$ftgMovie = Join-Path $root 'ui\levelup_ftg.swf'
+$ftgOn = $false
+if (Test-Path -LiteralPath $addInsXml) {
+    $item = [regex]::Match((Get-Content -LiteralPath $addInsXml -Raw), '(?s)<AddInItem[^>]*UID="FTG_UIMOD"[^>]*>')
+    if ($item.Success -and $item.Value -match 'Enabled="1"') { $ftgOn = $true }
+}
+if ($Ftg -or $ftgOn) {
+    if (Test-Path -LiteralPath $ftgMovie) {
+        $uiFile = 'ui\levelup_ftg.swf'
+        if ($ftgOn) { Write-Host "UI       : FtG UI Mod is enabled -> building on its level-up movie" }
+    } elseif ($Ftg) {
+        throw "ui\levelup_ftg.swf not found. Build it with ui\build-movie.ps1 -Movie levelup_ftg."
+    } else {
+        Write-Warning "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing; shipping the vanilla-based movie, which will hide that mod's level-up changes. Build it with: ui\build-movie.ps1 -Movie levelup_ftg -Java <java>"
+    }
+}
+
 $uiMovies = @(
-    @{ Name = 'levelup';   File = 'ui\levelup.swf' }
+    @{ Name = 'levelup';   File = $uiFile }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

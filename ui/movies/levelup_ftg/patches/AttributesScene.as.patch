@@ -1,0 +1,147 @@
+﻿diff --git a/scripts/__Packages/AttributesScene.as b/scripts/__Packages/AttributesScene.as
+index e1adda0..ef6365c 100644
+--- a/scripts/__Packages/AttributesScene.as
++++ b/scripts/__Packages/AttributesScene.as
+@@ -11,6 +11,7 @@ class AttributesScene
+    var pointsleft_mc_init;
+    var previous_mc_init;
+    static var m_aAttributes;
++   static var m_aSeedAttributes;
+    static var mcDescription;
+    static var mcDescriptionHeader;
+    static var ATTRIBUTES_BEGIN = 1;
+@@ -33,12 +34,18 @@ class AttributesScene
+       AttributesScene.bLevelUp = levelUp;
+       AttributesScene.parentClass = parent;
+       AttributesScene.m_aAttributes = new Array();
++      AttributesScene.m_aSeedAttributes = new Array();
+       var _loc3_ = AttributesScene.ATTRIBUTES_BEGIN;
+       while(_loc3_ <= AttributesScene.ATTRIBUTES_END)
+       {
+          AttributesScene.m_aAttributes[_loc3_] = 0;
++         AttributesScene.m_aSeedAttributes[_loc3_] = 0;
+          _loc3_ = _loc3_ + 1;
+       }
++      if(levelUp)
++      {
++         AttributesScene.SeedExistingAllocations();
++      }
+       _root.PortraitPicture_mc_init = function()
+       {
+          var _loc2_ = ExternalCommands.GetValue("CharGenCreature.Portrait");
+@@ -111,8 +118,14 @@ class AttributesScene
+                this.SetText(Localization.Strings.LOC_RESET);
+                this.OnButtonAction = function()
+                {
+-                  LevelUp.RevertSpecializations();
+-                  LevelUp.RevertAttributes();
++                  // Revert EVERYTHING, not just specializations and
++                  // attributes. Reverting a subset can leave the character
++                  // inconsistent: lowering an attribute back while a talent
++                  // learned this session still requires the higher value, or
++                  // dropping a specialization whose talents were just picked.
++                  // A full revert lands on exactly the state the screen was
++                  // opened in, which is valid by construction.
++                  LevelUp.RevertAllChanges();
+                };
+             };
+             this.next_mc_init = function()
+@@ -261,10 +274,97 @@ class AttributesScene
+       var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
+       while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
+       {
+-         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_]);
++         AttributesScene.RefundPoints(_loc1_,AttributesScene.m_aAttributes[_loc1_] - AttributesScene.m_aSeedAttributes[_loc1_]);
++         _loc1_ = _loc1_ + 1;
++      }
++   }
++   static function SeedExistingAllocations()
++   {
++      var _loc1_ = AttributesScene.ATTRIBUTES_BEGIN;
++      var _loc2_;
++      var _loc3_;
++      var _loc4_;
++      while(_loc1_ <= AttributesScene.ATTRIBUTES_END)
++      {
++         _loc2_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Total"));
++         _loc3_ = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + _loc1_ + ".Modifier"));
++         _loc4_ = _loc2_ - _loc3_ - 10 - AttributesScene.RaceAttributeBonus(_loc1_);
++         if(_loc4_ < 0)
++         {
++            _loc4_ = 0;
++         }
++         AttributesScene.m_aAttributes[_loc1_] = _loc4_;
++         AttributesScene.m_aSeedAttributes[_loc1_] = _loc4_;
+          _loc1_ = _loc1_ + 1;
+       }
+    }
++   static function RaceAttributeBonus(nID)
++   {
++      var _loc1_ = Number(ExternalCommands.GetValue("CharGenCreature.Stats.Race"));
++      if(_loc1_ == 1)
++      {
++         if(nID == 1 || nID == 2)
++         {
++            return 1;
++         }
++         if(nID == 3)
++         {
++            return 2;
++         }
++      }
++      else if(_loc1_ == 2)
++      {
++         if(nID == 5 || nID == 6)
++         {
++            return 2;
++         }
++      }
++      else if(_loc1_ == 3)
++      {
++         if(nID == 1 || nID == 2 || nID == 4 || nID == 6)
++         {
++            return 1;
++         }
++      }
++      return 0;
++   }
++   static function CanRemovePoint(nID)
++   {
++      var fNew = Number(ExternalCommands.GetValue("CharGenCreature.Attributes." + nID + ".Base")) - 1;
++      return !AttributesScene.IsAttributeRequiredAbove(nID,fNew);
++   }
++   static function IsAttributeRequiredAbove(nID, fValue)
++   {
++      var aBases = new Array("CharGenCreature.Stats.SkillChains","CharGenCreature.Stats.SpellChains","CharGenCreature.Stats.TalentChains");
++      var _loc2_;
++      var _loc3_;
++      var _loc4_;
++      var _loc5_;
++      var _loc6_;
++      var _loc7_;
++      _loc6_ = 0;
++      while(_loc6_ < aBases.length)
++      {
++         _loc2_ = aBases[_loc6_];
++         _loc3_ = Number(ExternalCommands.GetNumMembers(_loc2_));
++         _loc4_ = 0;
++         while(_loc4_ < _loc3_)
++         {
++            _loc5_ = _loc2_ + "." + _loc4_;
++            if(ExternalCommands.GetNumber(_loc5_ + ".DisplayState") == SharedLibrary.Ability.DISPLAYSTATE_HAVE)
++            {
++               _loc7_ = ExternalCommands.GetNumber(_loc5_ + ".AbilityTemplate.PrereqAttributeID");
++               if(_loc7_ == nID && ExternalCommands.GetNumber(_loc5_ + ".AbilityTemplate.PrereqAttributeValue") > fValue)
++               {
++                  return true;
++               }
++            }
++            _loc4_ = _loc4_ + 1;
++         }
++         _loc6_ = _loc6_ + 1;
++      }
++      return false;
++   }
+    static function CanAddMore(A)
+    {
+       return AttributesScene.AttributePointsToSpend > 0;

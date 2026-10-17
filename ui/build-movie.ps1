@@ -80,6 +80,24 @@ $checks = @{
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
         }
     }
+    # Same edits, layered onto FtG UI Mod's level-up movie instead of vanilla.
+    # Its LevelUp.as is restructured, so the guard uses its own variable name,
+    # and InitBookMenu proves the build really is based on their movie.
+    'levelup_ftg' = @{
+        expected = @{
+            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned')
+            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'RaceAttributeBonus', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()')
+            'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
+            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
+            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
+            'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec', 'Number(_loc2_) != 0', 'InitBookMenu')
+            'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
+        }
+        forbidden = @{
+            'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
+        }
+    }
 }
 
 # -------------------------------------------------------------- 1. base copy

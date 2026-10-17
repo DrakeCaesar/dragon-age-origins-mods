@@ -1,0 +1,63 @@
+﻿diff --git a/scripts/__Packages/SpellsTalentsScene.as b/scripts/__Packages/SpellsTalentsScene.as
+index c8d8308..ab1867e 100644
+--- a/scripts/__Packages/SpellsTalentsScene.as
++++ b/scripts/__Packages/SpellsTalentsScene.as
+@@ -22,6 +22,8 @@ class SpellsTalentsScene extends AbilityScene
+    static var aStoredPoints = new Array();
+    static var aStoredPrereqs = new Array();
+    static var aSeededAbilities = new Array();
++   static var aUnlearnedPoints;
++   static var nInitialPoints = -1;
+    static var nType = 0;
+    static var mcPointsLeft = null;
+    static var bLevelUp = false;
+@@ -34,6 +36,12 @@ class SpellsTalentsScene extends AbilityScene
+    {
+       SpellsTalentsScene.bLevelUp = levelUp;
+       SpellsTalentsScene.parentClass = parent;
++      SpellsTalentsScene.aUnlearnedPoints = new Array();
++      SpellsTalentsScene.nInitialPoints = -1;
++      if(levelUp)
++      {
++         SpellsTalentsScene.nInitialPoints = Number(ExternalCommands.GetValue("CharGenCreature.Attributes.36.Total"));
++      }
+       _root.SpellsTalents_header_mc_init = function()
+       {
+          if(SpellsTalentsScene.nType == CharGen.SPELLS)
+@@ -244,7 +252,10 @@ class SpellsTalentsScene extends AbilityScene
+       }
+       else
+       {
+-         AbilityScene.ResetPoints(SpellsTalentsScene,false);
++         if(!SpellsTalentsScene.bLevelUp)
++         {
++            AbilityScene.RevertPoints(SpellsTalentsScene,false);
++         }
+          SceneManager.PlayScene("Skills");
+       }
+    }
+@@ -289,7 +300,7 @@ class SpellsTalentsScene extends AbilityScene
+             }
+          }
+       }
+-      if(!SpellsTalentsScene.bWeHadPointsInitially)
++      if(!SpellsTalentsScene.bWeHadPointsInitially && !SpellsTalentsScene.bLevelUp)
+       {
+          SpellsTalentsScene.SkipScene();
+       }
+@@ -303,13 +314,13 @@ class SpellsTalentsScene extends AbilityScene
+    }
+    static function Unlearn(a_mcAbility)
+    {
+-      if(a_mcAbility.m_oAbility.nDisplayState == SharedLibrary.Ability.DISPLAYSTATE_HAVE && AbilityScene.IsNewAbility(SpellsTalentsScene,a_mcAbility.m_oAbility.nID))
++      if(a_mcAbility.m_oAbility.nDisplayState == SharedLibrary.Ability.DISPLAYSTATE_HAVE && (AbilityScene.IsNewAbility(SpellsTalentsScene,a_mcAbility.m_oAbility.nID) || SpellsTalentsScene.bLevelUp))
+       {
+          AbilityScene.UnspendPoint(SpellsTalentsScene,a_mcAbility.m_oAbility.nID);
+       }
+    }
+    static function ClearLearned(a_bSendAbilityChainsRequest)
+    {
+-      AbilityScene.ResetPoints(SpellsTalentsScene,a_bSendAbilityChainsRequest);
++      AbilityScene.RevertPoints(SpellsTalentsScene,a_bSendAbilityChainsRequest);
+    }
+ }

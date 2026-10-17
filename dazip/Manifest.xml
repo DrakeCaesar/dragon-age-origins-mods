@@ -45,7 +45,7 @@ Originally inspired by Peter 'weriK' Kovacs' "Character Respecialization" (Nexus
 		<!-- UI half: must extend the CORE module, which is where the level-up
 		     screen resource actually lives. A Single Player addin's core data is
 		     not mounted where the UI looks, and vice versa for the script. -->
-		<AddInItem UID="respec_proto_ui" Name="Interactive Respec (UI)" ExtendedModuleUID="core" Priority="100" Enabled="1" State="2" Format="1">
+		<AddInItem UID="respec_proto_ui" Name="Interactive Respec (UI)" ExtendedModuleUID="core" Priority="160" Enabled="1" State="2" Format="1">
 			<Title DefaultText="Interactive Respec (UI)">
 				<en-us>
 					<![CDATA[Interactive Respec (UI)]]>

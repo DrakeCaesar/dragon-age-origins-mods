@@ -9,12 +9,13 @@
  * In game (console enabled):
  *     runscript respec1
  *
- * The same screen can be opened by clicking the level-up indicator on the
- * hero's portrait, but only while the character has something left to spend.
- * The engine refuses that button's GUI.GoToLevelUp message otherwise, and
- * nothing in the UI can change that -- GUI.RunScript, GUI.RunClientScript and
- * GUI.RunConsoleCommand are all ignored, and the level-up flag cannot be set
- * from the UI. Use this command in that case.
+ * This is the only reliable entry point. The level-up indicator on the hero's
+ * portrait is left untouched: the engine refuses its GUI.GoToLevelUp message
+ * unless the character has something left to spend, and no message a movie can
+ * send creates the level-up session the screen reads CharGenCreature from and
+ * applies its edits through (GUILevelUp.CharGenAssignAbility/-Attribute/-End).
+ * Showing the screen without that session fills it with NaN, so a UI-side
+ * trigger cannot work.
  *
  * Build: compile with the Dragon Age Toolset -> respec1.ncs, then
  *        build\deploy.ps1   (or build\dazip.ps1 -Install for a distributable)

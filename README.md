@@ -49,38 +49,23 @@ picks you made outside it editable.
 The script does one thing — open the screen. It changes nothing on its own, so
 there is nothing to get wrong if you run it and then close the screen.
 
-The level-up indicator on the hero's portrait is patched so it no longer
-flashes (`gotoAndStop` on a frame the icon is actually drawn on, instead of
-playing the pulse). It keeps its original behaviour otherwise: it appears when
-the character can level up, and clicking it opens the level-up screen.
-
-> **The indicator cannot open the screen when every point is spent**, and this
-> was not solvable from the UI. Clicking sends `GUI.GoToLevelUp`, which the
-> engine refuses unless the character has unspent points, and that check is
-> server-side:
+> **Why the level-up indicator is not the trigger.** The obvious button is the
+> indicator on the hero's portrait, and it cannot work with every point spent:
+> clicking it sends `GUI.GoToLevelUp`, which the engine refuses unless the
+> character has unspent points. Everything a movie can reach was tried — the
+> flag cannot be set from the UI, `GUI.RunConsoleCommand` is ignored, and every
+> message that might start a session was tested. The screen *can* be shown
+> without one (`GUI.GoToGuiWithFollowerMessage "LevelUp" <id>` does open it),
+> but then the engine has no `CharGenCreature`: the screen reads `NaN` for every
+> value and has nothing to apply edits to.
 >
-> - setting the flag from a script does not satisfy it (the engine recomputes
->   it — `SetCanLevelUp(pc, 1)` leaves `GetCanLevelUp(pc)` reporting 0)
-> - writing the `<creature>.PortraitLevelUp` token from the movie does nothing
-> - `GUI.RunConsoleCommand` was tried as a way to make the button run this
->   mod's script, and the engine ignores it
-> - every message that might start a session was tried. The screen *can* be
->   shown without one — `GUI.GoToGuiWithFollowerMessage "LevelUp" <id>` does
->   open it — but the engine then has no `CharGenCreature`, so the screen reads
->   `NaN` for every value and has nothing to apply edits to (see below). That
->   fallback is deliberately **not** shipped, because an empty screen is worse
->   than no screen.
->
-> So use `runscript respec1` to open the screen when you have nothing left to
-> spend. The button still works normally when you do have a point.
-
-**Why a session is unavoidable.** The screen is a view onto engine state, not a
-store of its own: it reads `CharGenCreature.*` in 46 places and applies every
-change through the chargen subsystem (`GUILevelUp.CharGenAssignAbility`,
-`GUILevelUp.CharGenAssignAttribute`, committed by `GUILevelUp.CharGenEnd`).
-Only the engine's own level-up flow and a script's `StartCharGen(creature, 1)`
-create that session. No message available to a movie does, so a UI-only trigger
-can never be more than an empty shell.
+> **Why a session is unavoidable.** The screen is a view onto engine state, not
+> a store of its own: it reads `CharGenCreature.*` in 46 places and applies every
+> change through the chargen subsystem (`GUILevelUp.CharGenAssignAbility`,
+> `GUILevelUp.CharGenAssignAttribute`, committed by `GUILevelUp.CharGenEnd`).
+> Only the engine's own level-up flow and `StartCharGen(creature, 1)` create that
+> session, and both are script-only. So the script is the entry point, and the
+> indicator still behaves exactly as vanilla.
 
 > **No unspent points are required to see the screen.** The movie normally skips
 > its panes when there is nothing to spend (`bWeHadPointsInitially =
@@ -99,15 +84,14 @@ resources are mounted and one `AddInItem` can only carry one value:
    Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
-2. **UI**, extending `core`, which is where the UI movie resources live. Two
-   movies are patched: `levelup` (the screen itself) and `portraits` (the party
-   portraits that carry the level-up indicator).
+2. **UI**, extending `core`, which is where the UI movie resources live. One
+   movie is patched: `levelup` (the screen itself).
 
-The movies ship with the game as headerless SWFs (`levelup.gfx`, and
-`portraits.gfx`) inside the GUI packages. Their ActionScript tracks edits in
+The movie ships with the game as a headerless SWF (`levelup.gfx`) inside the
+GUI packages. Its ActionScript tracks edits in
 session-only arrays (`aStoredPoints`, `m_aAttributes`) that are cleared on every
 pane initialise, which is what makes existing picks uneditable. The patches in
-`ui/movies/*/patches/` change that for level-up mode only:
+`ui/movies/levelup/patches/` change that for level-up mode only:
 
 - owned abilities become clickable, and unlearnable
 - an existing specialization can be removed, refunding the specialization point
@@ -117,15 +101,14 @@ pane initialise, which is what makes existing picks uneditable. The patches in
   still picked
 - panes no longer revert when you navigate backwards
 - Reset reverts every pane, so it cannot leave the character inconsistent
-- the level-up indicator no longer flashes
 - `LevelUp.StartScene` no longer auto-levels when the engine never filled
   `CharGenCreature` in. The test was `GetValue("CharGenCreature.Stats.AutoLevelUp") != 0`,
   and in ActionScript a missing token fails a `!= 0` test, so showing the screen
   without a session made the movie fire `GUILevelUp.AutoLevelUp` and hide the
   screen again on the frame it opened. It now auto-levels only on a real value.
 
-Everything is scoped to `bLevelUp` (or to the portrait indicator itself), so
-character creation behaves exactly as vanilla.
+Everything is scoped to `bLevelUp`, so character creation behaves exactly as
+vanilla.
 
 ## Building
 
@@ -147,16 +130,14 @@ To rebuild the patched movies from source:
 ```powershell
 # regenerate patches from the edited scripts (_work) vs the pinned base
 powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie levelup
-powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie portraits
 
-# apply the patches and produce ui\levelup.swf / ui\portraits.swf
+# apply the patches and produce ui\levelup.swf
 powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie levelup
-powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie portraits
 ```
 
-Both take `-Movie` (default `levelup`). These need
+These need
 [FFDec (JPEXS Free Flash Decompiler)](https://github.com/jindrapetrik/jpexs-decompiler)
-and Java, plus the extracted vanilla movies. See [Notes](#notes).
+and Java, plus the extracted vanilla movie. See [Notes](#notes).
 
 ## Repository layout
 
@@ -164,7 +145,6 @@ and Java, plus the extracted vanilla movies. See [Notes](#notes).
 src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
-ui/movies/portraits/patches/*.patch level-up indicator changes
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
 build/dazip.ps1                     build, install and uninstall the .dazip
@@ -192,7 +172,8 @@ packages\core\patch\patch002.erf      levelup.gfx
 packages\core\patch\patch003.erf      levelup.gfx   <- the one the game uses
 ```
 
-The same applies to `portraits.gfx`, `quickbar.gfx` and `navbar.gfx`. Patching
+The same applies to any other UI resource you patch, such as `quickbar.gfx` or
+`navbar.gfx`. Patching
 the `guiexport` copies produces movies that render without the post-patch art
 fixes (button skins, specialization icons, portrait framing), so always base
 the build on the highest-numbered patch that ships the resource.

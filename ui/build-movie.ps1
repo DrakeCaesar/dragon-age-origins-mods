@@ -32,7 +32,7 @@
     Output path. Default: ui\<Movie>.swf
 
 .EXAMPLE
-    powershell -File ui\build-movie.ps1 -Movie portraits -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
+    powershell -File ui\build-movie.ps1 -Movie levelup -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
 #>
 [CmdletBinding()]
 param(
@@ -77,15 +77,7 @@ $checks = @{
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
-            'scripts\__Packages\LevelUp.as'     = @('RSP8')
-        }
-    }
-    'portraits' = @{
-        expected = @{
-            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndStop(29)', 'GUI.GoToLevelUp')
-        }
-        forbidden = @{
-            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndPlay(0)', 'SendMessageArgs("GUI.ShowCharGenGUI"', 'SendMessageArgs("GUI.RunConsoleCommand"', 'RSP: plu=', 'RSPBlink', 'GoToGuiWithFollowerMessage')
+            'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
         }
     }
 }

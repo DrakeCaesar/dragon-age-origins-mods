@@ -108,6 +108,7 @@ New-Item -ItemType Directory -Force -Path $spDir | Out-Null
 
 $moduleEntries = [ordered] @{}
 $moduleEntries["$Script.ncs"] = $ncsBytes
+
 $spErf = Join-Path $spDir "${UID_SP}_module.erf"
 [System.IO.File]::WriteAllBytes($spErf, (New-DaoErf -Entries $moduleEntries))
 Write-Host "Script   -> $spErf  (target: Single Player)"
@@ -120,12 +121,11 @@ if (Test-Path -LiteralPath $staleCore) {
     Write-Host "Cleanup  : removed stale $staleCore"
 }
 
-# --------------------------------------------------------- 2. UI addins
-# Several movies are patched now: the level-up screen itself, and the party
-# portraits whose level-up indicator has to be always available.
+# --------------------------------------------------------- 2. UI addin
+# One movie is patched: the level-up screen itself, which is what makes an
+# existing build editable once the screen is open.
 $uiMovies = @(
-    @{ Name = 'levelup';   File = 'ui\levelup.swf' },
-    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+    @{ Name = 'levelup';   File = 'ui\levelup.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

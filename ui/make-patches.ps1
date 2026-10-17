@@ -34,7 +34,7 @@
     Java executable.
 
 .EXAMPLE
-    powershell -File ui\make-patches.ps1 -Movie portraits -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
+    powershell -File ui\make-patches.ps1 -Movie levelup -Java "C:\Program Files\Zulu\zulu-24\bin\java.exe"
 #>
 [CmdletBinding()]
 param(

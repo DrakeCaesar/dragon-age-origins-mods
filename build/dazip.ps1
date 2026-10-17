@@ -197,8 +197,7 @@ $stubErf   = New-DaoErf -Entries ([ordered] @{})          # 32 bytes, header onl
 
 $uiErf  = $null
 $uiList = @(
-    @{ Name = 'levelup';   File = 'ui\levelup.swf' },
-    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+    @{ Name = 'levelup';   File = 'ui\levelup.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

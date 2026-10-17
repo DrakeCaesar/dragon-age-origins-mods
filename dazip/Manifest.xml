@@ -16,9 +16,9 @@
 Open the console and type:
     runscript respec1
 
-The same screen can be opened by clicking the level-up indicator on the hero's portrait, but only while the character still has something left to spend: the engine refuses that button otherwise.
-
 This mod does not perform a respecialisation. Once the screen is open, the existing build is directly editable.
+
+The level-up indicator on the portrait is left exactly as vanilla: the engine only lets it open the screen when the character still has a point to spend, and no UI-side message can create the level-up session the screen needs.
 
 Originally inspired by Peter 'weriK' Kovacs' "Character Respecialization" (Nexus mod 14).]]>
 				</en-us>

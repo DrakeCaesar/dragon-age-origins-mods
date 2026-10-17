@@ -43,25 +43,44 @@ runscript respec1
 ```
 
 That opens the level-up screen for the hero, with the build as it is. Everything
-after that is the GUI.
+after that is the GUI: the screen is where you undo picks, and the patches make
+picks you made outside it editable.
 
-| Command | Effect |
-| --- | --- |
-| `runscript respec1` | **Main:** open the level-up screen, changing nothing |
-| `runscript respec1 arm` | Set the level-up flag and report it (diagnostic) |
-| `runscript respec1 respec` | Full respec (skills, talents, spells, attributes), then open the screen |
-| `runscript respec1 <skill>` | Lower `<skill>` by one rank and refund the point |
-| `runscript respec1 <skill> <n>` | Lower `<skill>` by `n` ranks |
+The script does one thing — open the screen. It changes nothing on its own, so
+there is nothing to get wrong if you run it and then close the screen.
 
-`<skill>` is matched loosely and case-insensitively: `coercion`/`persuade`,
-`stealing`, `traps`, `survival`, `herbalism`, `poison`, `training`, `tactics`.
+The level-up indicator on the hero's portrait is patched so it no longer
+flashes (`gotoAndStop` on a frame the icon is actually drawn on, instead of
+playing the pulse). It keeps its original behaviour otherwise: it appears when
+the character can level up, and clicking it opens the level-up screen.
 
-The level-up indicator on the hero's portrait is patched to be always visible
-and no longer flashes, so it looks the part — but it sends
-`GUI.GoToLevelUp`, and the engine refuses that message unless the character can
-actually level up. Setting the level-up flag does **not** satisfy it, so the
-console command above is still required to open the screen. Use `arm` to see
-the flag and unspent-point values if you want to confirm that.
+> **The indicator cannot open the screen when every point is spent**, and this
+> was not solvable from the UI. Clicking sends `GUI.GoToLevelUp`, which the
+> engine refuses unless the character has unspent points, and that check is
+> server-side:
+>
+> - setting the flag from a script does not satisfy it (the engine recomputes
+>   it — `SetCanLevelUp(pc, 1)` leaves `GetCanLevelUp(pc)` reporting 0)
+> - writing the `<creature>.PortraitLevelUp` token from the movie does nothing
+> - `GUI.RunConsoleCommand` was tried as a way to make the button run this
+>   mod's script, and the engine ignores it
+> - every message that might start a session was tried. The screen *can* be
+>   shown without one — `GUI.GoToGuiWithFollowerMessage "LevelUp" <id>` does
+>   open it — but the engine then has no `CharGenCreature`, so the screen reads
+>   `NaN` for every value and has nothing to apply edits to (see below). That
+>   fallback is deliberately **not** shipped, because an empty screen is worse
+>   than no screen.
+>
+> So use `runscript respec1` to open the screen when you have nothing left to
+> spend. The button still works normally when you do have a point.
+
+**Why a session is unavoidable.** The screen is a view onto engine state, not a
+store of its own: it reads `CharGenCreature.*` in 46 places and applies every
+change through the chargen subsystem (`GUILevelUp.CharGenAssignAbility`,
+`GUILevelUp.CharGenAssignAttribute`, committed by `GUILevelUp.CharGenEnd`).
+Only the engine's own level-up flow and a script's `StartCharGen(creature, 1)`
+create that session. No message available to a movie does, so a UI-only trigger
+can never be more than an empty shell.
 
 > **No unspent points are required to see the screen.** The movie normally skips
 > its panes when there is nothing to spend (`bWeHadPointsInitially =
@@ -98,7 +117,12 @@ pane initialise, which is what makes existing picks uneditable. The patches in
   still picked
 - panes no longer revert when you navigate backwards
 - Reset reverts every pane, so it cannot leave the character inconsistent
-- the level-up indicator is always visible, without the flashing animation
+- the level-up indicator no longer flashes
+- `LevelUp.StartScene` no longer auto-levels when the engine never filled
+  `CharGenCreature` in. The test was `GetValue("CharGenCreature.Stats.AutoLevelUp") != 0`,
+  and in ActionScript a missing token fails a `!= 0` test, so showing the screen
+  without a session made the movie fire `GUILevelUp.AutoLevelUp` and hide the
+  screen again on the frame it opened. It now auto-levels only on a real value.
 
 Everything is scoped to `bLevelUp` (or to the portrait indicator itself), so
 character creation behaves exactly as vanilla.
@@ -137,7 +161,7 @@ and Java, plus the extracted vanilla movies. See [Notes](#notes).
 ## Repository layout
 
 ```
-src/respec1.nss                     the console script (all modes)
+src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
 ui/movies/portraits/patches/*.patch level-up indicator changes

@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/LevelUp.as b/scripts/__Packages/LevelUp.as
-index 9793693..8ba942d 100644
+index 9793693..013e0b9 100644
 --- a/scripts/__Packages/LevelUp.as
 +++ b/scripts/__Packages/LevelUp.as
 @@ -23,6 +23,7 @@ class LevelUp
@@ -10,7 +10,7 @@ index 9793693..8ba942d 100644
     static var nSpecializationsFound = 0;
     static var mcSpecializations = null;
     static var nExitPoint = 0;
-@@ -35,6 +36,7 @@ class LevelUp
+@@ -35,11 +36,18 @@ class LevelUp
     static function StartScene()
     {
        LevelUp.CreatureID = Number(ExternalCommands.GetValue("CharGenCreature.ID"));
@@ -18,7 +18,20 @@ index 9793693..8ba942d 100644
        LevelUp.nExitPoint = LevelUp.LEVELUP_EXIT_ABORT;
        LevelUp.m_Observers = new TokenObserverGroup();
        SharedLibrary.AbilityIcon.m_AbilityIconObservers = LevelUp.m_Observers;
-@@ -240,6 +242,7 @@ class LevelUp
+-      var _loc1_ = ExternalCommands.GetValue("CharGenCreature.Stats.AutoLevelUp") != 0;
+-      if(_loc1_)
++      var _loc1_ = ExternalCommands.GetValue("CharGenCreature.Stats.AutoLevelUp");
++      // A missing token is not "auto-level me". CharGenCreature is only filled
++      // in when the engine has a level-up session for this screen, so without
++      // one this token is absent -- and "absent != 0" is true in ActionScript,
++      // which made the old test auto-level and send GUI.HideFullScreenGUI,
++      // hiding the screen again on the frame it opened. Only auto-level on a
++      // real value.
++      if(_loc1_ != null && Number(_loc1_) != 0)
+       {
+          LevelUp.SendAutoLevelUpMessage();
+       }
+@@ -240,6 +248,7 @@ class LevelUp
        {
           LevelUp.UnspendSpecializationPoint(LevelUp.aNewSpecPoints[0]);
        }
@@ -26,7 +39,7 @@ index 9793693..8ba942d 100644
     }
     static function RevertAttributes()
     {
-@@ -272,6 +275,7 @@ class LevelUp
+@@ -272,6 +281,7 @@ class LevelUp
     }
     static function UnspendSpecializationPoint(a_nID)
     {
@@ -34,7 +47,7 @@ index 9793693..8ba942d 100644
        ExternalCommands.SendMessageArgs("GUILevelUp.CharGenAssignAbility",LevelUp.CreatureID,-1 * a_nID,1);
        ExternalCommands.PlayGUISound(SoundEvents.ST_STICKYBUTTON_CLICK);
        LevelUp.nSpecializationPoints++;
-@@ -285,6 +289,59 @@ class LevelUp
+@@ -285,6 +295,59 @@ class LevelUp
           }
           _loc1_ = _loc1_ + 1;
        }

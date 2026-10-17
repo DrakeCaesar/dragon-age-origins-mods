@@ -72,19 +72,20 @@ $checks = @{
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
             'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
             'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
-            'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec')
+            'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec', 'Number(_loc1_) != 0')
             'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            'scripts\__Packages\LevelUp.as'     = @('RSP8')
         }
     }
     'portraits' = @{
         expected = @{
-            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndStop(29)')
+            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndStop(29)', 'GUI.GoToLevelUp')
         }
         forbidden = @{
-            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndPlay(0)')
+            'scripts\__Packages\SharedLibrary\Portrait.as' = @('gotoAndPlay(0)', 'SendMessageArgs("GUI.ShowCharGenGUI"', 'SendMessageArgs("GUI.RunConsoleCommand"', 'RSP: plu=', 'RSPBlink', 'GoToGuiWithFollowerMessage')
         }
     }
 }

@@ -132,7 +132,7 @@ packages it.
 **The erfs alone are not enough.** Two addins can ship the same `core` resource
 and `AddIns.xml` does not decide who wins: with FtG UI Mod enabled its
 `levelup.swf` is the one the game used, even though this mod's `AddInItem` has a
-higher `Priority` (160 vs 100) and sits last in the list. So `deploy.ps1` also
+higher `Priority` (160 vs 100) and sits last in the list. So the install also
 writes the movie to the core override folder:
 
 ```
@@ -143,14 +143,23 @@ Resources there are merged after the addins, so that copy cannot be outranked.
 It is always the same build as the erf, and an unrelated file already sitting at
 that path is backed up to `levelup.swf.bak` rather than silently replaced.
 
-A `.dazip` cannot carry that file, because it lives outside the addin folder, so
-FtG users should install with `deploy.ps1` or copy `ui\levelup_ftg.swf` there by
-hand after installing the `.dazip`.
-
-**Re-run `deploy.ps1` whenever you enable or disable FtG UI Mod.** The base is
-chosen at deploy time, so the override file holds whichever movie was correct
-when it last ran. Toggle the mod, re-run the deploy, restart the game — one
+**Re-run the install whenever you enable or disable FtG UI Mod.** The base is
+chosen at install time, so the override file holds whichever movie was correct
+when the install last ran. Toggle the mod, re-run, restart the game — one
 install covers both cases, no second package to keep track of.
+
+`build\ui-base.ps1` makes that choice, and both `deploy.ps1` and
+`dazip.ps1 -Install` use it, so they cannot disagree about which movie to ship.
+
+**A distributable package is always the vanilla-based build.** Packaging
+(`dazip.ps1` without `-Install`) never auto-detects: the movie is the other mod's
+work and is not ours to redistribute, so a `.dazip` intended for other people is
+the vanilla-based build, which works for everyone. Anyone running FtG UI Mod can
+get its level-up screen *and* these patches by running `deploy.ps1`, which
+rebuilds that variant locally from their own copy — or by copying
+`ui\levelup_ftg.swf` to `packages\core\override\levelup.swf` after installing.
+A `.dazip` cannot carry that file itself, because it lives outside the addin
+folder.
 
 Our UI addin is registered at `Priority="160"`, above FtG UI Mod's `100`; that
 is kept for tidiness, but the override file is what actually decides.

@@ -124,33 +124,16 @@ if (Test-Path -LiteralPath $staleCore) {
 
 # --------------------------------------------------------- 2. UI addin
 # One movie is patched: the level-up screen itself, which is what makes an
-# existing build editable once the screen is open.
-#
-# FtG UI Mod also ships a levelup.swf, in the same "core" mount point, so the
-# two addins fight over the same resource. Shipping the vanilla-based movie
-# while that mod is enabled would throw its level-up changes away, and shipping
-# ours untouched would lose this mod's patches. So when FtG UI Mod is enabled
-# the build is layered on its movie instead: same patches, applied to their
-# ActionScript, which keeps both sets of changes. -Ftg forces that base.
-$uiFile = 'ui\levelup.swf'
-$ftgMovie = Join-Path $root 'ui\levelup_ftg.swf'
-$ftgOn = $false
-if (Test-Path -LiteralPath $addInsXml) {
-    $item = [regex]::Match((Get-Content -LiteralPath $addInsXml -Raw), '(?s)<AddInItem[^>]*UID="FTG_UIMOD"[^>]*>')
-    if ($item.Success -and $item.Value -match 'Enabled="1"') { $ftgOn = $true }
-}
-if ($Ftg -or $ftgOn) {
-    if (Test-Path -LiteralPath $ftgMovie) {
-        $uiFile = 'ui\levelup_ftg.swf'
-        if ($ftgOn) { Write-Host "UI       : FtG UI Mod is enabled -> building on its level-up movie" }
-    } elseif ($Ftg) {
-        throw "ui\levelup_ftg.swf not found. Build it with ui\build-movie.ps1 -Movie levelup_ftg."
-    } else {
-        Write-Warning "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing; shipping the vanilla-based movie, which will hide that mod's level-up changes. Build it with: ui\build-movie.ps1 -Movie levelup_ftg -Java <java>"
-    }
-} else {
-    Write-Host "UI       : FtG UI Mod is not enabled -> using the vanilla-based movie"
-}
+# existing build editable once the screen is open. Which base movie it is layered
+# on is decided by build\ui-base.ps1, which dazip.ps1 shares -- FtG UI Mod ships
+# its own levelup.swf in the same "core" mount point, so the choice has to be
+# made at install time and both paths must agree. -Ftg forces the FtG base.
+. (Join-Path $PSScriptRoot 'ui-base.ps1')
+$uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg
+$uiFile = $uiBase.File
+if ($uiBase.Note) { Write-Warning $uiBase.Note }
+elseif ($uiBase.Base -eq 'ftg') { Write-Host "UI       : FtG UI Mod is enabled -> building on its level-up movie" }
+else { Write-Host "UI       : FtG UI Mod is not enabled -> using the vanilla-based movie" }
 
 $uiMovies = @(
     @{ Name = 'levelup';   File = $uiFile }
@@ -175,24 +158,12 @@ if ($NoUi) {
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
     Write-Host "UI       -> $uiErf  (target: core)"
 
-    # The same movie also goes to the core override folder. Two addins can ship
-    # the same core resource and AddIns.xml does not decide who wins: with FtG UI
-    # Mod enabled its levelup.swf is the one the game uses, no matter that our
-    # AddInItem has a higher Priority and sits last in the list. Resources under
-    # packages\core\override are merged after the addins, so this copy cannot be
-    # outranked, and it is always the same build as the erfs above.
-    $ovrDir  = Join-Path $daDocs 'packages\core\override'
-    $ovrFile = Join-Path $ovrDir 'levelup.swf'
-    $srcHash = (Get-FileHash -LiteralPath (Join-Path $root $uiFile)).Hash
-    if (-not (Test-Path -LiteralPath $ovrDir)) { New-Item -ItemType Directory -Force -Path $ovrDir | Out-Null }
-    if (Test-Path -LiteralPath $ovrFile) {
-        if (((Get-FileHash -LiteralPath $ovrFile).Hash -ne $srcHash) -and -not (Test-Path -LiteralPath "$ovrFile.bak")) {
-            Copy-Item -LiteralPath $ovrFile -Destination "$ovrFile.bak"
-            Write-Host "Override : backed up someone else's levelup.swf to levelup.swf.bak"
-        }
-    }
-    Copy-Item -LiteralPath (Join-Path $root $uiFile) -Destination $ovrFile -Force
-    Write-Host "Override : $uiFile -> $ovrFile  (outranks every addin's levelup.swf)"
+    # The same movie also goes to the core override folder, because the erfs are
+    # not enough: with FtG UI Mod enabled its levelup.swf is the one the game
+    # uses, no matter what AddIns.xml says about priority or order. Resources
+    # under packages\core\override are merged after the addins, so this copy
+    # cannot be outranked, and it is always the same build as the erfs above.
+    Write-Host "Override : $(Install-DaoLevelupOverride -Docs $daDocs -Movie (Join-Path $root $uiFile))"
 }
 
 # --------------------------------------------------------- 4. register

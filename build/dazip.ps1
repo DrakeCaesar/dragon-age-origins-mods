@@ -62,6 +62,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root       = Split-Path -Parent $PSScriptRoot            # project root
+. (Join-Path $PSScriptRoot 'ui-base.ps1')
 $ScriptName = 'respec1'
 $UID_SP     = 'respec_proto'                              # script half
 $UID_UI     = 'respec_proto_ui'                           # UI half
@@ -197,8 +198,10 @@ $moduleErf = New-DaoErf -Entries ([ordered] @{ "$ScriptName.ncs" = $ncsBytes })
 $stubErf   = New-DaoErf -Entries ([ordered] @{})          # 32 bytes, header only
 
 $uiErf  = $null
-# FtG UI Mod ships its own levelup.swf in the same "core" mount point, so a
-# package meant for people using that mod has to be layered on its movie.
+# Which movie goes into the package. Packaging never auto-detects: the erfs in a
+# distributable must be the vanilla-based build, because FtG UI Mod's movie is
+# that mod's work and is not redistributed here. -Ftg packages the variant meant
+# for people running that mod.
 # Build it first: ui\build-movie.ps1 -Movie levelup_ftg  (see the README).
 $uiList = @(
     @{ Name = 'levelup';   File = $(if ($Ftg) { 'ui\levelup_ftg.swf' } else { 'ui\levelup.swf' }) }
@@ -312,6 +315,15 @@ try {
         $text = $text -replace '</AddInsList>', ("`t" + $item.Value + "`r`n</AddInsList>")
         [System.IO.File]::WriteAllText($addInsXml, $text)
         Write-Host "  registered: $uid"
+    }
+
+    # Installing locally is where the base can be chosen for this machine, the
+    # same way deploy.ps1 does it, because the override file is what decides.
+    $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root
+    $movie  = Join-Path $root $uiBase.File
+    if ($uiBase.Note) { Write-Warning $uiBase.Note }
+    if (Test-Path -LiteralPath $movie) {
+        Write-Host ("  override : " + (Install-DaoLevelupOverride -Docs $daDocs -Movie $movie))
     }
 } finally {
     $zip.Dispose()

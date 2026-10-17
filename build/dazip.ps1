@@ -69,7 +69,12 @@ $UID_SP     = 'respec_proto'                              # the only addin
 $UID_UI     = $UID_SP                                     # both trees live here
 
 $manifest = Join-Path $root 'dazip\Manifest.xml'
-if (-not $Out) { $Out = Join-Path $root 'build\respec_proto.dazip' }
+# Mirrors ui\build-movie.ps1's naming so the packaged movie and the file name
+# agree: _ftg marks the FtG-based movie, _ten the flat-10 floor, and neither
+# means the vanilla base with the starting-value floor.
+$floorSuffix   = if ($AttributeFloor -eq 'Ten') { '_ten' } else { '' }
+$variantSuffix = $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix
+if (-not $Out) { $Out = Join-Path $root "build\respec_proto$($variantSuffix).dazip" }
 
 $daDocs    = Join-Path $env:USERPROFILE 'Documents\BioWare\Dragon Age'
 $addInsXml = Join-Path $daDocs 'Settings\AddIns.xml'
@@ -204,9 +209,15 @@ $uiErf  = $null
 # distributable must be the vanilla-based build, because FtG UI Mod's movie is
 # that mod's work and is not redistributed here. -Ftg packages the variant meant
 # for people running that mod.
-# Build it first: ui\build-movie.ps1 -Movie levelup_ftg  (see the README).
+#
+# The attribute floor is part of the choice too: ui\levelup_ten.swf and
+# ui\levelup_ftg_ten.swf are separate movies, so -AttributeFloor has to select
+# the file here and not only in the install path below.
+#
+# Build them first: ui\build-all.ps1  (or ui\build-movie.ps1 per variant).
+$movieFile = 'ui\levelup' + $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix + '.swf'
 $uiList = @(
-    @{ Name = 'levelup';   File = $(if ($Ftg) { 'ui\levelup_ftg.swf' } else { 'ui\levelup.swf' }) }
+    @{ Name = 'levelup';   File = $movieFile }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

@@ -34,6 +34,39 @@ powershell -ExecutionPolicy Bypass -File build\dazip.ps1 -Uninstall
 
 The `.dazip` is a normal DAO package, so DAO-Modmanager / DAModder work too.
 
+## Packaging all four variants
+
+The movie base and the attribute floor are independent, so four distributables
+exist. `deploy.ps1` builds all four and packages them automatically; each lands
+in its own self-contained folder under `build\dist\`, with a `README.txt`:
+
+```
+build\dist\vanilla-starting\respec_proto.dazip
+build\dist\vanilla-ten\respec_proto_ten.dazip
+build\dist\ftg-starting\respec_proto_ftg.dazip
+build\dist\ftg-ten\respec_proto_ftg_ten.dazip
+```
+
+`_ftg` marks a build for people running FtG UI Mod, `_ten` the flat-10 floor.
+Folders can be zipped or handed out individually; nothing else is needed.
+
+Only one of the four is *installed* — the one matching the detected UI base and
+the floor you asked for:
+
+```powershell
+powershell -File build\deploy.ps1 -AttributeFloor Ten
+```
+
+Skip the packaging or the movie rebuild when iterating:
+
+```powershell
+powershell -File build\deploy.ps1 -NoBuild -NoPackage
+```
+
+`-AttributeFloor` selects the actual movie file that gets packaged and
+installed, not just a name — `ui\levelup_ten.swf` and `ui\levelup_ftg_ten.swf`
+are separate builds of the same patches.
+
 ## Usage
 
 Open the console and run:
@@ -214,15 +247,22 @@ install covers both cases, no second package to keep track of.
 `build\ui-base.ps1` makes that choice, and both `deploy.ps1` and
 `dazip.ps1 -Install` use it, so they cannot disagree about which movie to ship.
 
-**A distributable package is always the vanilla-based build.** Packaging
-(`dazip.ps1` without `-Install`) never auto-detects: the movie is the other mod's
-work and is not ours to redistribute, so a `.dazip` intended for other people is
-the vanilla-based build, which works for everyone. Anyone running FtG UI Mod can
-get its level-up screen *and* these patches by running `deploy.ps1`, which
-rebuilds that variant locally from their own copy — or by copying
-`ui\levelup_ftg.swf` to `packages\core\override\levelup.swf` after installing.
-A `.dazip` cannot carry that file itself, because it lives outside the addin
-folder.
+**Packaging never auto-detects the UI base.** `dazip.ps1` without `-Install`
+does not look at whether FtG UI Mod is installed: the base is fixed per package
+by `-Ftg`. That way a `.dazip` always contains what its name says, instead of
+whatever happened to be enabled on the machine that built it.
+
+The `vanilla-*` packages work for everyone. The `ftg-*` packages are only
+correct for players running FtG UI Mod, and a vanilla-based package installed
+over that mod would hide its level-up changes.
+
+**The `ftg-*` packages contain FtG UI Mod's own `levelup.swf`, patched.** That
+movie is that author's work, not ours; what this repo adds is the patch set in
+`ui/movies/levelup_ftg/patches/`. Check that mod's permissions before handing
+those two packages out, and credit it. Anyone running FtG UI Mod can also get
+the same result locally without redistribution: `deploy.ps1` rebuilds the
+patched movie from their own copy, or `ui\levelup_ftg.swf` can be copied to
+`packages\core\override\levelup.swf` after installing.
 
 Our UI addin is registered at `Priority="160"`, above FtG UI Mod's `100`; that
 is kept for tidiness, but the override file is what actually decides.
@@ -256,8 +296,10 @@ compile it, then:
 powershell -ExecutionPolicy Bypass -File build\deploy.ps1
 ```
 
-`deploy.ps1` is the fast iteration path (it writes straight into the installed
-addin folders). `dazip.ps1` is the distributable path.
+`deploy.ps1` is the one entry point: it builds all four movie variants, packages
+all four distributable `.dazip`s, then installs the variant matching your UI
+base and `-AttributeFloor`. `dazip.ps1` remains for handling a single package
+(`-Install` / `-Uninstall`).
 
 To rebuild the patched movies from source:
 
@@ -281,9 +323,10 @@ dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
 ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's movie
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
+ui/build-all.ps1                    build all four movies
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
-build/dazip.ps1                     build, install and uninstall the .dazip
-build/deploy.ps1                    one-command deploy into the installed addin
+build/deploy.ps1                    build all four, package all four, install one
+build/dazip.ps1                     package (or install/uninstall) a single .dazip
 ref/                                engine API and ability-id references
 ```
 

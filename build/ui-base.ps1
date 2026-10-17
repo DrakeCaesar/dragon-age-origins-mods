@@ -13,6 +13,36 @@
 # Both install paths (build\deploy.ps1 and build\dazip.ps1 -Install) and the
 # packaging path use this, so they cannot disagree about which movie to use.
 
+function Get-DaoVariants {
+    <#
+    .SYNOPSIS
+        The four level-up movie variants: two movie bases times two floors.
+    .OUTPUTS
+        Array of hashtables: Dir, Ftg, Floor, Title, Blurb, Movie, Dazip.
+    .DESCRIPTION
+        Defined once so deploy.ps1 (build + package + install) and dazip.ps1
+        (package one) cannot disagree about names or which movie is which.
+    #>
+    return @(
+        @{ Dir = 'vanilla-starting'; Ftg = $false; Floor = 'Starting'
+           Title = 'Interactive Respec - vanilla UI, starting-value floor'
+           Blurb = 'Use this with the unmodded level-up screen. Attributes cannot be refunded below whatever character creation gave this character (10 plus its race and class adjustments).'
+           Movie = 'ui\levelup.swf';        Dazip = 'respec_proto.dazip' }
+        @{ Dir = 'vanilla-ten';      Ftg = $false; Floor = 'Ten'
+           Title = 'Interactive Respec - vanilla UI, flat 10 floor'
+           Blurb = 'Use this with the unmodded level-up screen. Every attribute can be refunded down to a flat 10, so a build can be rebuilt from scratch. This also refunds the race and class points.'
+           Movie = 'ui\levelup_ten.swf';    Dazip = 'respec_proto_ten.dazip' }
+        @{ Dir = 'ftg-starting';     Ftg = $true;  Floor = 'Starting'
+           Title = 'Interactive Respec - FtG UI Mod, starting-value floor'
+           Blurb = 'ONLY for players running FtG UI Mod. Attributes cannot be refunded below whatever character creation gave this character (10 plus its race and class adjustments).'
+           Movie = 'ui\levelup_ftg.swf';    Dazip = 'respec_proto_ftg.dazip' }
+        @{ Dir = 'ftg-ten';          Ftg = $true;  Floor = 'Ten'
+           Title = 'Interactive Respec - FtG UI Mod, flat 10 floor'
+           Blurb = 'ONLY for players running FtG UI Mod. Every attribute can be refunded down to a flat 10, so a build can be rebuilt from scratch. This also refunds the race and class points.'
+           Movie = 'ui\levelup_ftg_ten.swf'; Dazip = 'respec_proto_ftg_ten.dazip' }
+    )
+}
+
 function Get-DaoLevelupMovie {
     <#
     .SYNOPSIS

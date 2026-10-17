@@ -2,6 +2,7 @@
 # Everything here is regenerable from src\ + ui\movies\*\patches\ (+ the game install).
 build/stage/
 build/*.dazip
+build/dist/
 src/*.ncs
 ui/levelup.swf
 ui/levelup_ten.swf

@@ -6,13 +6,21 @@
 .DESCRIPTION
     Everything needed to get a change into the game, in one command:
 
-      1. rebuilds the module erf from the newest Toolset-compiled respec1.ncs
-      2. rebuilds the core erf from ui\levelup.swf  (unless -NoUi)
-      3. creates/refreshes the addin tree under
+      1. builds all four level-up movie variants (two movie bases x two
+         attribute floors) unless -NoBuild
+      2. packages all four as distributable .dazips under build\dist\, each in
+         its own folder with a README, unless -NoPackage
+      3. rebuilds the module erf from the newest Toolset-compiled respec1.ncs
+      4. rebuilds the core erf from the selected movie  (unless -NoUi)
+      5. creates/refreshes the addin tree under
          <Documents>\BioWare\Dragon Age\AddIns\<UID>\
-      4. (re)writes this addin's <AddInItem> in AddIns.xml, taken verbatim from
+      6. (re)writes this addin's <AddInItem> in AddIns.xml, taken verbatim from
          dazip\Manifest.xml, so target/description changes always take effect
-      5. backs up AddIns.xml before touching it, and verifies it still parses
+      7. backs up AddIns.xml before touching it, and verifies it still parses
+
+    Steps 1 and 2 keep every variant current, so the packages you hand out are
+    never stale. Only one of them is installed here: the one matching the
+    detected UI base and the -AttributeFloor you asked for.
 
     Safe to run repeatedly. Refuses to run while the game is open, since DAO
     rewrites its state on exit.
@@ -24,16 +32,32 @@
 .PARAMETER NoUi
     Skip the core erf / level-up UI; deploy the script only.
 
+.PARAMETER AttributeFloor
+    Which floor to install: Starting (10 + race + class, matching character
+    creation) or Ten (flat 10). Both are built and packaged either way.
+
+.PARAMETER Java
+    Java executable used to rebuild the movies.
+
+.PARAMETER NoBuild
+    Reuse the movies already in ui\ instead of rebuilding all four.
+
+.PARAMETER NoPackage
+    Skip creating the distributable .dazips under build\dist\.
+
 .EXAMPLE
     powershell -File build\deploy.ps1
-#>
+#> 
 [CmdletBinding()]
 param(
     [string] $Ncs,
     [switch] $NoUi,
     [switch] $Ftg,
     [ValidateSet('Starting', 'Ten')]
-    [string] $AttributeFloor = 'Starting'
+    [string] $AttributeFloor = 'Starting',
+    [string] $Java = 'java',
+    [switch] $NoBuild,
+    [switch] $NoPackage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +93,63 @@ foreach ($p in @(
 }
 if (-not (Test-Path -LiteralPath $addInsXml)) { throw "AddIns.xml not found at '$addInsXml'." }
 if (-not (Test-Path -LiteralPath $manifest))  { throw "Manifest not found at '$manifest'." }
+
+# Shared with dazip.ps1: movie selection and the variant table, so the two
+# scripts cannot disagree about names or which movie is which.
+. (Join-Path $PSScriptRoot 'ui-base.ps1')
+
+# ------------------------------------------- 1. build all four movie variants
+# The four combinations of movie base and attribute floor are built every time,
+# so a deploy never ships a stale variant and the distributables are always
+# current. -NoBuild reuses whatever is already in ui\.
+$variants = Get-DaoVariants
+if ($NoBuild) {
+    Write-Host "Movies  : reused from ui\ (-NoBuild)"
+} else {
+    Write-Host "Movies  : building all $($variants.Count) variants"
+    & powershell -NoProfile -File (Join-Path $root 'ui\build-all.ps1') -Java $Java
+    if ($LASTEXITCODE -ne 0) { throw "Building the movie variants failed." }
+}
+
+# -------------------------------------- 2. package all four distributable dazips
+# Each variant gets its own folder under build\dist\ with a README, so any one
+# can be zipped or handed out as-is. -NoPackage skips this for a pure dev loop.
+if ($NoPackage) {
+    Write-Host "Package : skipped (-NoPackage)"
+} elseif ($NoUi) {
+    Write-Host "Package : skipped (no UI to package)"
+} else {
+    Write-Host "Package : building $($variants.Count) dazips under build\dist\"
+    $dazipScript = Join-Path $PSScriptRoot 'dazip.ps1'
+    foreach ($v in $variants) {
+        $dir = Join-Path $root "build\dist\$($v.Dir)"
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        $out = Join-Path $dir $v.Dazip
+
+        $dazipArgs = @('-NoProfile', '-File', $dazipScript, '-Out', $out, '-AttributeFloor', $v.Floor)
+        if ($v.Ftg) { $dazipArgs += '-Ftg' }
+        & powershell @dazipArgs 2>&1 | ForEach-Object {
+            if ($_ -match '^(Dazip|UI|Script)') { Write-Host "          $($_)" }
+        }
+        if ($LASTEXITCODE -ne 0) { throw "Packaging '$($v.Dir)' failed." }
+
+        $readme = @"
+$($v.Title)
+
+$($v.Blurb)
+
+Install with a dazip installer, or copy the Contents tree into your
+Documents\BioWare\Dragon Age folder. Enable "Interactive Respec" in the
+in-game Downloadable Content list, then open the console and run:
+
+    runscript respec1
+
+Console must be enabled first (see the mod's README).
+"@
+        Set-Content -LiteralPath (Join-Path $dir 'README.txt') -Value $readme -Encoding UTF8
+    }
+    Write-Host "          -> build\dist\  ($($variants.Count) folders)"
+}
 
 # ------------------------------------------------- locate the compiled script
 if (-not $Ncs) {
@@ -190,7 +271,6 @@ if (Test-Path -LiteralPath $staleUi) {
 # on is decided by build\ui-base.ps1, which dazip.ps1 shares -- FtG UI Mod ships
 # its own levelup.swf in the same "core" mount point, so the choice has to be
 # made at install time and both paths must agree. -Ftg forces the FtG base.
-. (Join-Path $PSScriptRoot 'ui-base.ps1')
 $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg -Floor $AttributeFloor.ToLower()
 $uiFile = $uiBase.File
 if ($uiBase.Note) { Write-Warning $uiBase.Note }

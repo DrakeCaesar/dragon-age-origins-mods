@@ -53,10 +53,9 @@ if (Get-Process DAOrigins -ErrorAction SilentlyContinue) {
 # makes the write below fail with a sharing violation. Test the files rather
 # than the process: having the Toolset open is fine as long as it is not
 # holding anything we need to replace.
-$UID_ADDIN = 'respec_proto'
 foreach ($p in @(
-    (Join-Path $daDocs "AddIns\$UID_ADDIN\module\data\${UID_ADDIN}_module.erf"),
-    (Join-Path $daDocs "AddIns\$UID_ADDIN\core\data\${UID_ADDIN}_modcore.erf")
+    (Join-Path $daDocs "AddIns\$UID\module\data\$($UID)_module.erf"),
+    (Join-Path $daDocs "AddIns\$UID\core\data\$($UID)_modcore.erf")
 )) {
     if (-not (Test-Path -LiteralPath $p)) { continue }
     try {
@@ -77,8 +76,8 @@ if (-not $Ncs) {
     # top of the copy in the module erf. _toolsetexport keeps it as a build
     # input the engine never reads.
     $candidates = @(
-        (Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport\$Script.ncs"),
-        (Join-Path $daDocs "AddIns\$UID_ADDIN\module\override\toolsetexport\$Script.ncs")
+        (Join-Path $daDocs "AddIns\$UID\_toolsetexport\$Script.ncs"),
+        (Join-Path $daDocs "AddIns\$UID\module\override\toolsetexport\$Script.ncs")
     )
     $exports = $candidates | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Item -LiteralPath $_ }
     if (-not $exports) {
@@ -134,24 +133,24 @@ function New-DaoErf {
 # names, while ExtendedModuleUID only says which module the addin belongs to.
 # That matters because the game lists one entry per AddInItem, and a split
 # layout showed up as a second "Interactive Respec (UI)" entry.
-$UID_ADDIN = 'respec_proto'
+$UID = 'respec_proto'
 
-$moduleDir = Join-Path $daDocs "AddIns\$UID_ADDIN\module\data"
+$moduleDir = Join-Path $daDocs "AddIns\$UID\module\data"
 New-Item -ItemType Directory -Force -Path $moduleDir | Out-Null
 
 $moduleEntries = [ordered] @{}
 $moduleEntries["$Script.ncs"] = $ncsBytes
 
-$spErf = Join-Path $moduleDir "${UID_ADDIN}_module.erf"
+$spErf = Join-Path $moduleDir "$($UID)_module.erf"
 [System.IO.File]::WriteAllBytes($spErf, (New-DaoErf -Entries $moduleEntries))
 Write-Host "Script   -> $spErf  (target: Single Player)"
 
 # module\override is a live mount point, so anything the Toolset drops into
 # module\override\toolsetexport is delivered a second time on top of the erf.
 # Fold it into _toolsetexport (never mounted) and remove the mounted copy.
-$mountedExport = Join-Path $daDocs "AddIns\$UID_ADDIN\module\override\toolsetexport"
+$mountedExport = Join-Path $daDocs "AddIns\$UID\module\override\toolsetexport"
 if (Test-Path -LiteralPath $mountedExport) {
-    $safeExport = Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport"
+    $safeExport = Join-Path $daDocs "AddIns\$UID\_toolsetexport"
     New-Item -ItemType Directory -Force -Path $safeExport | Out-Null
     Get-ChildItem -LiteralPath $mountedExport -File | ForEach-Object {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $safeExport $_.Name) -Force
@@ -167,12 +166,12 @@ if (Test-Path -LiteralPath $mountedExport) {
 # applied twice -- visible as an attribute moving 2 while our own counter moves
 # 1. The game does not need the cif (the module script is merged from the erf),
 # so keep it as a build artefact outside the mount tree instead of deleting it.
-$mountedCif = Join-Path $daDocs "AddIns\$UID_ADDIN\module\${UID_ADDIN}.cif"
+$mountedCif = Join-Path $daDocs "AddIns\$UID\module\$($UID).cif"
 if (Test-Path -LiteralPath $mountedCif) {
-    $safeExport = Join-Path $daDocs "AddIns\$UID_ADDIN\_toolsetexport"
+    $safeExport = Join-Path $daDocs "AddIns\$UID\_toolsetexport"
     New-Item -ItemType Directory -Force -Path $safeExport | Out-Null
-    Move-Item -LiteralPath $mountedCif -Destination (Join-Path $safeExport "${UID_ADDIN}.cif") -Force
-    Write-Host "Cleanup  : moved module\${UID_ADDIN}.cif out of the mount tree (it registers a module event script)"
+    Move-Item -LiteralPath $mountedCif -Destination (Join-Path $safeExport "$($UID).cif") -Force
+    Write-Host "Cleanup  : moved module\$($UID).cif out of the mount tree (it registers a module event script)"
 }
 
 # The second addin of the old two-addin layout is gone; drop it so the game does
@@ -213,9 +212,9 @@ if ($NoUi) {
         Write-Host "UI       : $($m.File) -> $($m.Name).swf  ($($bytes.Length) bytes)"
     }
 
-    $uiDir = Join-Path $daDocs "AddIns\$UID_ADDIN\core\data"
+    $uiDir = Join-Path $daDocs "AddIns\$UID\core\data"
     New-Item -ItemType Directory -Force -Path $uiDir | Out-Null
-    $uiErf = Join-Path $uiDir "${UID_ADDIN}_modcore.erf"
+    $uiErf = Join-Path $uiDir "$($UID)_modcore.erf"
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
     Write-Host "UI       -> $uiErf  (same addin, core tree)"
 

@@ -77,6 +77,8 @@ $checks = @{
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            # Diagnostic markers from an earlier debugging round. They must never
+            # reappear: the level-up name field is not ours to write to.
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
         }
     }
@@ -95,7 +97,7 @@ $checks = @{
         }
         forbidden = @{
             'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
-            'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
+            'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')   # see above
         }
     }
 }

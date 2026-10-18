@@ -1,8 +1,8 @@
 ﻿diff --git a/scripts/__Packages/Inventory.as b/scripts/__Packages/Inventory.as
-index 2525022..267502c 100644
+index 2525022..e372f91 100644
 --- a/scripts/__Packages/Inventory.as
 +++ b/scripts/__Packages/Inventory.as
-@@ -37,9 +37,189 @@ class Inventory
+@@ -37,9 +37,207 @@ class Inventory
     static var ms_mcEquipment = null;
     static var ms_nEquipSlotHighlight = -1;
     static var ms_nFullOverlayIntervalID = 0;
@@ -11,7 +11,16 @@ index 2525022..267502c 100644
 +   // its own leaf token. Watching the parent "GUI.SelectedChar" token does not
 +   // fire when only its children change, so equipment never refreshed the rows.
 +   static var ATTRIBUTE_OBSERVER_BASE = 63000;
-+   static var ATTRIBUTE_ROW_DEPTH = 300;
++   static var ATTRIBUTE_ROW_DEPTH = 1;
++   // The panel art runs to the edge of the movie's 1024x768 stage, so anything
++   // "beside" it has to sit past the stage edge: the game scales the stage by
++   // height and centres it, which leaves that margin of screen visible.
++   static var ATTRIBUTE_BLOCK_DEPTH = 6000;
++   static var ATTRIBUTE_BLOCK_X = 984;
++   static var ATTRIBUTE_BLOCK_Y = 271;
++   // Names that read better spelled out than abbreviated; everything else follows
++   // the three-letter rule below.
++   static var LABEL_OVERRIDES = {Fire:"Fire",Cunning:"Cun"};
 +   static var RESISTANCE_UIMAPPING = 1;
 +   static var ELEMENTAL_RESISTANCE_UIMAPPING = 3;
 +   // properties.2da has an unused row 0, so the six attributes are 1..6.
@@ -22,12 +31,7 @@ index 2525022..267502c 100644
 +   static var ATTRIBUTE_FIELD_WIDTH = 60;
 +   static var ATTRIBUTE_FIELD_HEIGHT = 20;
 +   static var ATTRIBUTE_TEXT_INSET = 2;
-+   // Rows are centred by hand between the two retail rows either side of the
-+   // paperdoll. Their positions are fixed in the movie (fatigue at 53.3, the armour
-+   // row at 340 with the icon's ink starting a few pixels lower), and the values
-+   // here were checked against screenshots of the real screen. Measuring them with
-+   // getBounds does not work inside this movie.
-+   static var ATTRIBUTE_ROW_TOP = 90;
++   static var ATTRIBUTE_ROW_TOP = 0;
 +   static var ATTRIBUTE_ROW_HEIGHT = 17;
 +   static var ATTRIBUTE_RESISTANCE_GAP = 9;
 +   static var ATTRIBUTE_LABEL_X = 2;
@@ -42,7 +46,16 @@ index 2525022..267502c 100644
 +   {
 +      // Three letters is the usual abbreviation, but a fourth is kept when it is a
 +      // consonant: "Str" but "Dext", "Will", "Cons".
-+      if(a_sLabel == null || a_sLabel.length <= 4)
++      if(a_sLabel == null)
++      {
++         return a_sLabel;
++      }
++      var sOverride = Inventory.LABEL_OVERRIDES[a_sLabel];
++      if(sOverride != undefined)
++      {
++         return sOverride;
++      }
++      if(a_sLabel.length <= 4)
 +      {
 +         return a_sLabel;
 +      }
@@ -76,16 +89,13 @@ index 2525022..267502c 100644
 +   }
 +   static function AddAttributeRows()
 +   {
-+      var mcStats = _root.Stats_mc;
-+      if(mcStats == undefined)
-+      {
-+         FuncUtils.CallWithDelay(Inventory.AddAttributeRows,0.25);
-+         return;
-+      }
-+      if(mcStats.AttributeRows != undefined)
++      if(_root.AttributeBlock_mc != undefined)
 +      {
 +         return;
 +      }
++      var mcStats = _root.createEmptyMovieClip("AttributeBlock_mc",Inventory.ATTRIBUTE_BLOCK_DEPTH);
++      mcStats._x = Inventory.ATTRIBUTE_BLOCK_X;
++      mcStats._y = Inventory.ATTRIBUTE_BLOCK_Y;
 +      var aRows = Inventory.BuildAttributeRowList();
 +      mcStats.AttributeRows = new Array();
 +      var nY = Inventory.ATTRIBUTE_ROW_TOP;
@@ -171,9 +181,17 @@ index 2525022..267502c 100644
 +      // Same markup the paperdoll's own rows use, so the rows look native.
 +      a_mcField.htmlText = "<p align=\"" + (a_bRightAligned ? "right" : "left") + "\"><font face=\"$BodyFont\" size=\"12\" color=\"#ffffff\">" + a_sText + "</font></p>";
 +   }
++   static function RemoveAttributeRows()
++   {
++      if(_root.AttributeBlock_mc == undefined)
++      {
++         return;
++      }
++      _root.AttributeBlock_mc.removeMovieClip();
++   }
 +   static function UpdateAttributeRows()
 +   {
-+      var mcStats = _root.Stats_mc;
++      var mcStats = _root.AttributeBlock_mc;
 +      if(mcStats == undefined || mcStats.AttributeRows == undefined)
 +      {
 +         return;
@@ -192,7 +210,7 @@ index 2525022..267502c 100644
     static function StartScene()
     {
        if(GUISystem.RunningInGame == false)
-@@ -55,6 +235,7 @@ class Inventory
+@@ -55,6 +253,7 @@ class Inventory
        }
        Inventory.aCategoryNames = Array(Localization.Strings.LOC_CATEGORY_ALL,Localization.Strings.LOC_CATEGORY_WEAPONS,Localization.Strings.LOC_CATEGORY_ARMOR,Localization.Strings.LOC_CATEGORY_ACCESSORIES,Localization.Strings.LOC_CATEGORY_OTHER,Localization.Strings.LOC_CATEGORY_CRAFTING,Localization.Strings.LOC_CATEGORY_PLOT);
        Inventory.SetupInitFunctions();
@@ -200,3 +218,13 @@ index 2525022..267502c 100644
        ContextSystem.CreateContext("Inventory");
        ContextSystem.CreateContext("PaperDoll");
        ContextSystem.CreateContext("SelectInventoryItemForEquipSlot");
+@@ -149,6 +348,9 @@ class Inventory
+    }
+    static function FinishScene()
+    {
++      // The rows live on _root rather than in the scene's own timeline, so they
++      // have to be taken down with the scene or they would hang over the game.
++      Inventory.RemoveAttributeRows();
+       var _loc1_ = ExternalCommands.GetValue("GameMode.CloseSceneCompletely");
+       if(Boolean(Number(_loc1_)) == true || _loc1_ == null)
+       {

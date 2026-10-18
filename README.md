@@ -154,32 +154,42 @@ vanilla.
 
 ### The inventory paperdoll
 
-The inventory screen's left column lists only condition and combat stats â€”
+The inventory screen's left column lists only condition and combat stats ?
 health, energy and fatigue above the paperdoll, armour, defence, attack and
-damage below it. The patched `inventory` movie puts the six attributes and the
-resistances in the gap between them, showing the same numbers as the character
-record:
+damage below it. The patched `inventory` movie adds the six attributes and the
+resistances, showing the same numbers as the character record:
 
 ```
 Str   19  18   +1        Ment  17   0  +10
 Dext  24  19   +5        Phys  26   0  +10
-Will  11  10   +1        Fir   25   0  +25
+Will  11  10   +1        Fire  25   0  +25
 Mag   12  11   +1        Cold   0   0   +0
-Cunn  21  14   +7        Elec   0   0   +0
+Cun   21  14   +7        Elec   0   0   +0
 Cons  19  13   +6        Nat    0   0   +0
                          Spir  10   0  +10
 ```
 
 Each row is **total, base, modifier**; the modifier is signed and coloured the
-way the character sheet colours it. The rows are instances of the movie's own
-`PaperDoll_stats_#Field` symbol, so they inherit the book font and formatting,
-one field per column so the numbers stay aligned even though they differ in
+way the character sheet colours it. Every part of a row is its own text field, so
+the three number columns keep a fixed right edge even though the values differ in
 width.
+
+**The block sits outside the panel, in the screen margin beside it.** The movie's
+stage is 1024x768 and the panel's own art runs all the way to that edge (the item
+sort picker reaches x 1034), so there is no room beside the panel *inside* the
+stage. The game scales the stage and centres it ? 1.5x at 2560x1440 with DAFix's
+`HUD Scale = 0.6666667`, which is 1536x1152 on screen ? so the stage edge is not
+the screen edge and the space beyond it is visible. The block is created on
+`_root` at stage coordinates (984, 271), i.e. just past the panel's right edge and
+centred vertically on the stage.
+
+Because it lives on `_root` instead of in the scene's own timeline, `FinishScene`
+removes it ? otherwise it would hang over the game once the panel closes.
 
 Worth knowing:
 
 - Values come from `GUI.SelectedChar.Attributes.<property>.Total/.Base/.Modifier`,
-  where `<property>` is the `properties.2da` row id â€” 1..6 for the six
+  where `<property>` is the `properties.2da` row id ? 1..6 for the six
   attributes, because row 0 of that table is unused.
 - Each cell observes **its own leaf token** and takes the value handed to the
   callback. Observing the parent `GUI.SelectedChar` token does not fire when only
@@ -189,16 +199,16 @@ Worth knowing:
   `properties.2da` where `HASH_UIMAPPING` is 1 (Mental, Physical) or 3 (the five
   elemental ones), which is how `CharacterRecord.UpdateResistances` finds them.
 - Labels are three letters, keeping a fourth when it is a consonant, so `Dext`,
-  `Will`, `Cunn` and `Cons` stay readable.
+  `Will` and `Cons` stay readable. `LABEL_OVERRIDES` spells out names that read
+  better that way: `Fire` and `Cun`.
 - Resistances carry no `%`.
 
-**The layout numbers are constants, not measurements.** The retail rows sit at
-fixed positions in the movie (fatigue at y 53.3, the armour row at 340 with its
-icon's ink a few pixels higher), and `getBounds` does not work inside this movie
-â€” a runtime measurement silently does nothing, which looks like "the change had
-no effect". `ATTRIBUTE_ROW_TOP` and the column right-edges in `Inventory.as` were
-checked against screenshots of the real screen, so change them together with a
-look at the screen.
+**The layout numbers are constants, not measurements.** `getBounds` does not work
+inside this movie ? a runtime measurement silently does nothing, which looks
+exactly like "the change had no effect". `ATTRIBUTE_BLOCK_X`,
+`ATTRIBUTE_BLOCK_Y`, `ATTRIBUTE_ROW_TOP` and the column right-edges in
+`Inventory.as` were all set against the real screen, so change them only together
+with a look at the screen.
 
 ### Attribute ids, column names, and Cunning
 

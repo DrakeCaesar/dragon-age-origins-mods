@@ -106,6 +106,13 @@ there is nothing to get wrong if you run it and then close the screen.
 > its panes when there is nothing to spend (`bWeHadPointsInitially =
 > nPointsToSpend > 0`), which is why a fully-spent character could not be
 > edited. The patches disable that in level-up mode.
+>
+> A pane is still skipped when the creature has nothing it *could* have on it at
+> all, which is not the same thing as having no points: a Mabari has attributes
+> and talents but no skill list, so the Skills pane is passed over instead of
+> shown empty. The test is the pane's own ability chains
+> (`CharGenCreature.Stats.SkillChains`, and for the spells/talents pane
+> `SpellChains` plus `TalentChains`).
 
 **Cancel is safe.** Closing the screen aborts and restores attributes, skills,
 talents/spells and specializations to the state they were in when it opened.

@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/SkillsScene.as b/scripts/__Packages/SkillsScene.as
-index c00464a..fcfcbd8 100644
+index c00464a..d78701c 100644
 --- a/scripts/__Packages/SkillsScene.as
 +++ b/scripts/__Packages/SkillsScene.as
 @@ -19,6 +19,8 @@ class SkillsScene extends AbilityScene
@@ -35,7 +35,7 @@ index c00464a..fcfcbd8 100644
           SceneManager.PlayScene("Attributes");
        }
     }
-@@ -200,7 +204,7 @@ class SkillsScene extends AbilityScene
+@@ -200,10 +204,18 @@ class SkillsScene extends AbilityScene
              }
           }
        }
@@ -44,7 +44,18 @@ index c00464a..fcfcbd8 100644
        {
           SkillsScene.SkipScene();
        }
-@@ -214,13 +218,13 @@ class SkillsScene extends AbilityScene
++      else if(SkillsScene.bLevelUp)
++      {
++         AbilityScene.SendAbilityChainsRequest(SkillsScene);
++         if(Number(ExternalCommands.GetNumMembers("CharGenCreature.Stats.SkillChains")) == 0)
++         {
++            SkillsScene.SkipScene();
++         }
++      }
+    }
+    static function Learn(a_mcAbility)
+    {
+@@ -214,13 +226,13 @@ class SkillsScene extends AbilityScene
     }
     static function Unlearn(a_mcAbility)
     {

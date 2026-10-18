@@ -83,8 +83,8 @@ $checks = @{
             'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned', 'IsCombatTrainingPrereqOfOwned')
             'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
-            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
-            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
+            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints', 'SkillsScene.bLevelUp')
+            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints', 'nSpellChains + nTalentChains == 0')
             'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec', 'Number(_loc1_) != 0')
             'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
         }
@@ -106,8 +106,8 @@ $checks = @{
             'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned', 'IsCombatTrainingPrereqOfOwned')
             'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
             'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
-            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints')
-            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints')
+            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints', 'SkillsScene.bLevelUp')
+            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints', 'nSpellChains + nTalentChains == 0')
             'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec', 'Number(_loc2_) != 0', 'InitBookMenu')
             'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
         }

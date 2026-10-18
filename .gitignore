@@ -1,4 +1,4 @@
-# ---------------------------------------------------------------- build output
+﻿# ---------------------------------------------------------------- build output
 # Everything here is regenerable from src\ + ui\movies\*\patches\ (+ the game install).
 build/stage/
 build/*.dazip
@@ -33,3 +33,7 @@ ui/_verify/
 ui/_import/
 
 __pycache__/
+
+# ------------------------------------------------ reference checkout, not ours
+# Lyall's DAFix (MIT) cloned here for reference only; never part of this addin.
+DAFix/

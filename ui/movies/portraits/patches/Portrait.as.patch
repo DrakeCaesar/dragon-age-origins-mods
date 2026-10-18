@@ -1,33 +1,75 @@
 ﻿diff --git a/scripts/__Packages/SharedLibrary/Portrait.as b/scripts/__Packages/SharedLibrary/Portrait.as
-index a8eadef..e22862c 100644
+index ae801f5..7c2bf6a 100644
 --- a/scripts/__Packages/SharedLibrary/Portrait.as
 +++ b/scripts/__Packages/SharedLibrary/Portrait.as
-@@ -175,19 +175,22 @@ class SharedLibrary.Portrait extends GUI.Element
+@@ -175,14 +175,17 @@ class SharedLibrary.Portrait extends GUI.Element
        this.AlertParalyze_mc_init = this.CreateAlertInitFunction(this.m_sCreatureToken + ".Paralyzed",this.ALERT_PARALYZE_CONTINOUS);
        TokenManager.AddTokenObserverWithID(_OBSERVER_ID.PORTRAIT_LEVELUP_RANGE + this.LocalIndex,mcPortrait.m_sCreatureToken + ".PortraitLevelUp",function(a_bCanLevelUp)
        {
 -         if(a_bCanLevelUp == 0)
--         {
++         if(mcPortrait.LevelUpIndicator_mc != undefined)
+          {
 -            MovieUtils.HideMovie(mcPortrait.LevelUpIndicator_mc);
 -         }
 -         else
-+         mcPortrait.LevelUpIndicator_mc.gotoAndStop(29);
-+         MovieUtils.ShowMovie(mcPortrait.LevelUpIndicator_mc);
-+         if(a_bCanLevelUp != 0)
-          {
-             mcPortrait.LevelUpIndicator_mc.gotoAndPlay(0);
--            MovieUtils.ShowMovie(mcPortrait.LevelUpIndicator_mc);
+-         {
+-            mcPortrait.LevelUpIndicator_mc.gotoAndPlay(0);
+             MovieUtils.ShowMovie(mcPortrait.LevelUpIndicator_mc);
++            if(a_bCanLevelUp != 0)
++            {
++               mcPortrait.LevelUpIndicator_mc.gotoAndPlay(0);
++            }
++            else
++            {
++               mcPortrait.LevelUpIndicator_mc.gotoAndStop(29);
++            }
           }
        }
        );
-       this.LevelUpIndicator_mc_init = function()
-       {
-+         this.gotoAndStop(29);
+@@ -198,12 +201,21 @@ class SharedLibrary.Portrait extends GUI.Element
+          {
+             if(a_nGameMode == GUISystem.GM_COMBAT)
+             {
++               self.gotoAndPlay(0);
+                self.DisableWithEvents();
+                self.m_bPushButtonEnabled = false;
+                self.SetTooltipSource(Localization.Strings.LOC_LEVEL_UP_DISABLED);
+             }
+             else
+             {
++               if(Number(ExternalCommands.GetValue(mcPortrait.m_sCreatureToken + ".PortraitLevelUp")) != 0)
++               {
++                  self.gotoAndPlay(0);
++               }
++               else
++               {
++                  self.gotoAndStop(29);
++               }
+                self.EnableWithEvents();
+                self.m_bPushButtonEnabled = true;
+                self.SetTooltipSource(Localization.Strings.LOC_LEVEL_UP);
+@@ -219,6 +231,24 @@ class SharedLibrary.Portrait extends GUI.Element
+                ExternalCommands.SendMessageArgs("GUI.GoToLevelUp",_loc1_,0);
+             }
+          };
 +         MovieUtils.ShowMovie(this);
-+         if(Number(ExternalCommands.GetValue(mcPortrait.m_sCreatureToken + ".PortraitLevelUp")) != 0)
++         if(ExternalCommands.GetValue("GameModeController.CurrentGameMode") == GUISystem.GM_COMBAT)
 +         {
 +            this.gotoAndPlay(0);
++            this.DisableWithEvents();
 +         }
-          this.AddBehaviour(Behaviour.DisplayTooltip);
-          this.TooltipType = Behaviour.DisplayTooltip.TOOLTIP_TYPE_SIMPLE_FLOATING;
-          this.HostAnchor = Behaviour.DisplayTooltip.ANCHOR_RIGHT;
++         else
++         {
++            if(Number(ExternalCommands.GetValue(mcPortrait.m_sCreatureToken + ".PortraitLevelUp")) != 0)
++            {
++               this.gotoAndPlay(0);
++            }
++            else
++            {
++               this.gotoAndStop(29);
++            }
++            this.EnableWithEvents();
++         }
+       };
+    }
+    function onRollOverHitArea()

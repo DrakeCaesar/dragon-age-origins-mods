@@ -1,14 +1,16 @@
 ﻿diff --git a/scripts/__Packages/Inventory.as b/scripts/__Packages/Inventory.as
-index 2525022..6e79e6c 100644
+index 2525022..267502c 100644
 --- a/scripts/__Packages/Inventory.as
 +++ b/scripts/__Packages/Inventory.as
-@@ -37,9 +37,180 @@ class Inventory
+@@ -37,9 +37,189 @@ class Inventory
     static var ms_mcEquipment = null;
     static var ms_nEquipSlotHighlight = -1;
     static var ms_nFullOverlayIntervalID = 0;
 +   static var NUM_ATTRIBUTES = 6;
-+   static var ATTRIBUTE_OBSERVER_ID = 63000;
-+   static var ms_bAttributeRefreshPending = false;
++   // Four observer ids per row: one per number column, so every field watches
++   // its own leaf token. Watching the parent "GUI.SelectedChar" token does not
++   // fire when only its children change, so equipment never refreshed the rows.
++   static var ATTRIBUTE_OBSERVER_BASE = 63000;
 +   static var ATTRIBUTE_ROW_DEPTH = 300;
 +   static var RESISTANCE_UIMAPPING = 1;
 +   static var ELEMENTAL_RESISTANCE_UIMAPPING = 3;
@@ -102,29 +104,53 @@ index 2525022..6e79e6c 100644
 +         var mcBase = Inventory.MakeAttributeColumn(mcStats,"AttributeBase" + nRow,nDepth + 2,Inventory.ATTRIBUTE_BASE_RIGHT,nY,true);
 +         var mcModifier = Inventory.MakeAttributeColumn(mcStats,"AttributeModifier" + nRow,nDepth + 3,Inventory.ATTRIBUTE_MODIFIER_RIGHT,nY,true);
 +         Inventory.SetAttributeText(mcLabel,Inventory.ShortLabel(CreatureUtils.LabelForProperty(aRows[nRow])),false);
++         Inventory.ObserveAttributeRow(nRow,aRows[nRow],mcTotal,mcBase,mcModifier);
 +         mcStats.AttributeRows.push({property:aRows[nRow],total:mcTotal,base:mcBase,modifier:mcModifier});
 +         nY = nY + Inventory.ATTRIBUTE_ROW_HEIGHT;
 +         nRow = nRow + 1;
 +      }
-+      TokenManager.AddTokenObserverWithID(Inventory.ATTRIBUTE_OBSERVER_ID,"GUI.SelectedChar",function()
-+      {
-+         // Reading a token back inside its own notification re-enters the token
-+         // evaluation while it is still running, and the recursion runs the stack
-+         // out - which is what crashed the game as soon as equipment changed the
-+         // character. Refresh on the next frame instead, and only once per burst.
-+         if(Inventory.ms_bAttributeRefreshPending == false)
-+         {
-+            Inventory.ms_bAttributeRefreshPending = true;
-+            FuncUtils.CallWithDelay(Inventory.RefreshAttributeRows,0.01);
-+         }
-+      }
-+      );
 +      Inventory.UpdateAttributeRows();
 +   }
-+   static function RefreshAttributeRows()
++   static function ObserveAttributeRow(a_nRow, a_nProperty, a_mcTotal, a_mcBase, a_mcModifier)
 +   {
-+      Inventory.ms_bAttributeRefreshPending = false;
-+      Inventory.UpdateAttributeRows();
++      // Each field watches its own leaf token and takes the value handed to the
++      // callback, the way the paperdoll's own rows do: reading a token back inside
++      // a notification re-enters the token evaluation.
++      var nID = Inventory.ATTRIBUTE_OBSERVER_BASE + a_nRow * 4;
++      var sToken = "GUI.SelectedChar.Attributes." + a_nProperty;
++      TokenManager.AddTokenObserverWithID(nID + 1,sToken + ".Total",function(a_vValue)
++      {
++         Inventory.SetAttributeText(a_mcTotal,CreatureUtils.FormatPrecisionByProperty(Number(a_vValue),a_nProperty),true);
++      }
++      );
++      TokenManager.AddTokenObserverWithID(nID + 2,sToken + ".Base",function(a_vValue)
++      {
++         Inventory.SetAttributeText(a_mcBase,CreatureUtils.FormatPrecisionByProperty(Number(a_vValue),a_nProperty),true);
++      }
++      );
++      TokenManager.AddTokenObserverWithID(nID + 3,sToken + ".Modifier",function(a_vValue)
++      {
++         Inventory.SetModifierText(a_mcModifier,Number(a_vValue));
++      }
++      );
++   }
++   static function SetModifierText(a_mcField, a_nModifier)
++   {
++      var sPrefix = "";
++      var sSuffix = "";
++      var sSign = "+";
++      if(a_nModifier < 0)
++      {
++         sPrefix = SharedLibrary.CoreStats.NegativeColorPrefix();
++         sSuffix = SharedLibrary.CoreStats.ColorSuffix();
++         sSign = "-";
++      }
++      else if(a_nModifier > 0)
++      {
++         sPrefix = SharedLibrary.CoreStats.PositiveColorPrefix();
++         sSuffix = SharedLibrary.CoreStats.ColorSuffix();
++      }
++      Inventory.SetAttributeText(a_mcField,sPrefix + sSign + Math.abs(a_nModifier) + sSuffix,true);
 +   }
 +   static function MakeAttributeColumn(a_mcParent, a_sName, a_nDepth, a_nX, a_nY, a_bRightAligned)
 +   {
@@ -157,33 +183,16 @@ index 2525022..6e79e6c 100644
 +      {
 +         var oRow = mcStats.AttributeRows[nRow];
 +         var sToken = "GUI.SelectedChar.Attributes." + oRow.property;
-+         var nTotal = Number(ExternalCommands.GetValue(sToken + ".Total"));
-+         var nBase = Number(ExternalCommands.GetValue(sToken + ".Base"));
-+         var nModifier = Number(ExternalCommands.GetValue(sToken + ".Modifier"));
-+         var sPrefix = "";
-+         var sSuffix = "";
-+         var sSign = "+";
-+         if(nModifier < 0)
-+         {
-+            sPrefix = SharedLibrary.CoreStats.NegativeColorPrefix();
-+            sSuffix = SharedLibrary.CoreStats.ColorSuffix();
-+            sSign = "-";
-+         }
-+         else if(nModifier > 0)
-+         {
-+            sPrefix = SharedLibrary.CoreStats.PositiveColorPrefix();
-+            sSuffix = SharedLibrary.CoreStats.ColorSuffix();
-+         }
-+         Inventory.SetAttributeText(oRow.total,CreatureUtils.FormatPrecisionByProperty(nTotal,oRow.property),true);
-+         Inventory.SetAttributeText(oRow.base,CreatureUtils.FormatPrecisionByProperty(nBase,oRow.property),true);
-+         Inventory.SetAttributeText(oRow.modifier,sPrefix + sSign + Math.abs(nModifier) + sSuffix,true);
++         Inventory.SetAttributeText(oRow.total,CreatureUtils.FormatPrecisionByProperty(Number(ExternalCommands.GetValue(sToken + ".Total")),oRow.property),true);
++         Inventory.SetAttributeText(oRow.base,CreatureUtils.FormatPrecisionByProperty(Number(ExternalCommands.GetValue(sToken + ".Base")),oRow.property),true);
++         Inventory.SetModifierText(oRow.modifier,Number(ExternalCommands.GetValue(sToken + ".Modifier")));
 +         nRow = nRow + 1;
 +      }
 +   }
     static function StartScene()
     {
        if(GUISystem.RunningInGame == false)
-@@ -55,6 +226,7 @@ class Inventory
+@@ -55,6 +235,7 @@ class Inventory
        }
        Inventory.aCategoryNames = Array(Localization.Strings.LOC_CATEGORY_ALL,Localization.Strings.LOC_CATEGORY_WEAPONS,Localization.Strings.LOC_CATEGORY_ARMOR,Localization.Strings.LOC_CATEGORY_ACCESSORIES,Localization.Strings.LOC_CATEGORY_OTHER,Localization.Strings.LOC_CATEGORY_CRAFTING,Localization.Strings.LOC_CATEGORY_PLOT);
        Inventory.SetupInitFunctions();

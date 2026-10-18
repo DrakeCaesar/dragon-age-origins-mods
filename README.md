@@ -184,6 +184,10 @@ Worth knowing:
 - Values come from `GUI.SelectedChar.Attributes.<property>.Total/.Base/.Modifier`,
   where `<property>` is the `properties.2da` row id — 1..6 for the six
   attributes, because row 0 of that table is unused.
+- Each cell observes **its own leaf token** and takes the value handed to the
+  callback. Observing the parent `GUI.SelectedChar` token does not fire when only
+  its children change, which shows up as rows that only refresh when the screen is
+  reopened.
 - The resistances are not a fixed list: the rows are taken from
   `properties.2da` where `HASH_UIMAPPING` is 1 (Mental, Physical) or 3 (the five
   elemental ones), which is how `CharacterRecord.UpdateResistances` finds them.

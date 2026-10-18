@@ -52,7 +52,6 @@
 param(
     [string] $Ncs,
     [switch] $NoUi,
-    [switch] $Ftg,
     [ValidateSet('Starting', 'Ten')]
     [string] $AttributeFloor = 'Starting',
     [string] $Java = 'java',
@@ -127,7 +126,6 @@ if ($NoPackage) {
         $out = Join-Path $dir $v.Dazip
 
         $dazipArgs = @('-NoProfile', '-File', $dazipScript, '-Out', $out, '-AttributeFloor', $v.Floor)
-        if ($v.Ftg) { $dazipArgs += '-Ftg' }
         & powershell @dazipArgs 2>&1 | ForEach-Object {
             if ($_ -match '^(Dazip|UI|Script)') { Write-Host "          $($_)" }
         }
@@ -269,14 +267,11 @@ if (Test-Path -LiteralPath $staleUi) {
 # Two movies are patched: the level-up screen itself, which makes an existing
 # build editable once the screen is open, and the party-bar portrait, whose
 # level-up indicator is kept visible so the screen can be reached at any time.
-# Which base the level-up movie is layered on is decided by build\ui-base.ps1,
-# which dazip.ps1 shares -- FtG UI Mod ships its own levelup.swf in the same
-# "core" mount point, so the choice has to be made at install time and both
-# paths must agree. -Ftg forces the FtG base.
-$uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg -Floor $AttributeFloor.ToLower()
+# Which level-up movie to ship is decided by build\ui-base.ps1, which dazip.ps1
+# shares, so both paths must agree.
+$uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -Floor $AttributeFloor.ToLower()
 $uiFile = $uiBase.File
 if ($uiBase.Note) { Write-Warning $uiBase.Note }
-elseif ($uiBase.Base -eq 'ftg') { Write-Host "UI       : -Ftg given -> building on FtG UI Mod's level-up movie" }
 else { Write-Host "UI       : using the vanilla-based level-up movie" }
 if ($uiBase.Floor -eq 'ten') {
     Write-Host "UI       : attribute floor = flat 10 (rebuild from scratch; the character's starting values are not restored)"
@@ -311,8 +306,8 @@ if ($NoUi) {
     Write-Host "UI       -> $uiErf  (same addin, core tree)"
 
     # The same movies also go to the core override folder, because the erfs are
-    # not enough: with FtG UI Mod enabled its levelup.swf is the one the game
-    # uses, no matter what AddIns.xml says about priority or order. Resources
+    # not enough: another addin that ships the same movie name (a UI mod) wins
+    # over ours no matter what AddIns.xml says about priority or order. Resources
     # under packages\core\override are merged after the addins, so these copies
     # cannot be outranked, and they are always the same builds as the erfs above.
     foreach ($m in $uiMovies) {

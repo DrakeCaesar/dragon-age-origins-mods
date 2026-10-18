@@ -2,7 +2,7 @@
 #
 # The mod ships the movie in two places:
 #   AddIns\respec_proto\core\data\respec_proto_modcore.erf   (the addin)
-#   packages\core\override\levelup.swf                       (beats FtG UI Mod)
+#   packages\core\override\levelup.swf                       (outranks any addin that ships the same movie)
 #
 # Two copies of the same resource name is suspicious for "every message fires
 # twice" bugs, so this switches between the two deliveries without having to
@@ -57,4 +57,4 @@ $deliveries = 1 + $(if ($hasOvr) { 1 } else { 0 })
 "delivery   : {0} copy/copies" -f $deliveries
 "  addin ERF   {0,9} bytes  {1}" -f $erfSize, $(if (Test-Path -LiteralPath $erf) { 'present' } else { 'MISSING' })
 "  override    {0,9} bytes  {1}" -f $(if ($hasOvr) { (Get-Item -LiteralPath $ovr).Length } else { 0 }), $(if ($hasOvr) { 'present' } else { 'absent' })
-if ($hasOvr) { "  NOTE: with FtG UI Mod enabled the override is what makes OUR movie win." }
+if ($hasOvr) { "  NOTE: a UI mod that ships its own copy of the movie is outranked by this override." }

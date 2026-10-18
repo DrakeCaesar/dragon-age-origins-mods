@@ -55,7 +55,6 @@ param(
     [switch] $Install,
     [switch] $Uninstall,
     [switch] $NoUi,
-    [switch] $Ftg,
     [ValidateSet('Starting', 'Ten')]
     [string] $AttributeFloor = 'Starting'
 )
@@ -70,10 +69,8 @@ $UID_UI     = $UID_SP                                     # both trees live here
 
 $manifest = Join-Path $root 'dazip\Manifest.xml'
 # Mirrors ui\build-movie.ps1's naming so the packaged movie and the file name
-# agree: _ftg marks the FtG-based movie, _ten the flat-10 floor, and neither
-# means the vanilla base with the starting-value floor.
-$floorSuffix   = if ($AttributeFloor -eq 'Ten') { '_ten' } else { '' }
-$variantSuffix = $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix
+# agree: _ten marks the flat-10 floor, and no suffix means the starting-value one.
+$variantSuffix = if ($AttributeFloor -eq 'Ten') { '_ten' } else { '' }
 if (-not $Out) { $Out = Join-Path $root "build\respec_proto$($variantSuffix).dazip" }
 
 $daDocs    = Join-Path $env:USERPROFILE 'Documents\BioWare\Dragon Age'
@@ -205,17 +202,12 @@ $moduleErf = New-DaoErf -Entries ([ordered] @{ "$ScriptName.ncs" = $ncsBytes })
 $stubErf   = New-DaoErf -Entries ([ordered] @{})          # 32 bytes, header only
 
 $uiErf  = $null
-# Which movie goes into the package. Packaging never auto-detects: the erfs in a
-# distributable must be the vanilla-based build, because FtG UI Mod's movie is
-# that mod's work and is not redistributed here. -Ftg packages the variant meant
-# for people running that mod.
-#
-# The attribute floor is part of the choice too: ui\levelup_ten.swf and
-# ui\levelup_ftg_ten.swf are separate movies, so -AttributeFloor has to select
-# the file here and not only in the install path below.
+# Which movie goes into the package. The attribute floor is part of the choice:
+# ui\levelup_ten.swf is a separate movie, so -AttributeFloor has to select the
+# file here and not only in the install path below.
 #
 # Build them first: ui\build-all.ps1  (or ui\build-movie.ps1 per variant).
-$movieFile = 'ui\levelup' + $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix + '.swf'
+$movieFile = 'ui\levelup' + $variantSuffix + '.swf'
 $uiList = @(
     @{ Name = 'levelup';   File = $movieFile }
     @{ Name = 'portraits'; File = 'ui\portraits.swf' }

@@ -1,4 +1,4 @@
-# Interactive Respec — Dragon Age: Origins
+﻿# Interactive Respec â€” Dragon Age: Origins
 
 Open the **level-up screen for a character you have already built**, pre-filled
 with their existing skills, talents, spells and attributes, and edit it in
@@ -34,24 +34,21 @@ powershell -ExecutionPolicy Bypass -File build\dazip.ps1 -Uninstall
 
 The `.dazip` is a normal DAO package, so DAO-Modmanager / DAModder work too.
 
-## Packaging all four variants
+## Packaging both variants
 
-The movie base and the attribute floor are independent, so four distributables
-exist. `deploy.ps1` builds all four and packages them automatically; each lands
-in its own self-contained folder under `build\dist\`, with a `README.txt`:
+The attribute floor is a behavioural choice, so two distributables exist.
+`deploy.ps1` builds both and packages them automatically; each lands in its own
+self-contained folder under `build\dist\`, with a `README.txt`:
 
 ```
 build\dist\vanilla-starting\respec_proto.dazip
 build\dist\vanilla-ten\respec_proto_ten.dazip
-build\dist\ftg-starting\respec_proto_ftg.dazip
-build\dist\ftg-ten\respec_proto_ftg_ten.dazip
 ```
 
-`_ftg` marks a build for people running FtG UI Mod, `_ten` the flat-10 floor.
+`_ten` marks the flat-10 floor; no suffix means the starting-value floor.
 Folders can be zipped or handed out individually; nothing else is needed.
 
-Only one of the four is *installed* — the one matching the detected UI base and
-the floor you asked for:
+Only one of the two is *installed* â€” the floor you asked for:
 
 ```powershell
 powershell -File build\deploy.ps1 -AttributeFloor Ten
@@ -64,8 +61,8 @@ powershell -File build\deploy.ps1 -NoBuild -NoPackage
 ```
 
 `-AttributeFloor` selects the actual movie file that gets packaged and
-installed, not just a name — `ui\levelup_ten.swf` and `ui\levelup_ftg_ten.swf`
-are separate builds of the same patches.
+installed, not just a name â€” `ui\levelup.swf` and `ui\levelup_ten.swf` are
+separate builds of the same patches.
 
 ## Usage
 
@@ -79,11 +76,11 @@ That opens the level-up screen for the hero, with the build as it is. Everything
 after that is the GUI: the screen is where you undo picks, and the patches make
 picks you made outside it editable.
 
-The script does one thing — open the screen. It changes nothing on its own, so
+The script does one thing â€” open the screen. It changes nothing on its own, so
 there is nothing to get wrong if you run it and then close the screen.
 
 > **The portrait indicator is the other way in.** Clicking it sends
-> `GUI.GoToLevelUp`, and that message's handler does start the session — it was
+> `GUI.GoToLevelUp`, and that message's handler does start the session â€” it was
 > only ever refused because it tests the character's "can level up" predicate
 > (`daorigins.exe+2ACBC0`) first, which is false once every point is spent.
 > DAFix (`[Level Up] Unlock`) skips that single test at the call site, so the
@@ -122,8 +119,8 @@ talents/spells and specializations to the state they were in when it opened.
 Two halves, because a DAO addin's `ExtendedModuleUID` decides where its
 resources are mounted and one `AddInItem` can only carry one value:
 
-1. **Script** (`src/respec1.nss` → `respec1.ncs`), extending `Single Player`.
-   Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
+1. **Script** (`src/respec1.nss` â†’ `respec1.ncs`), extending `Single Player`.
+   Calls the engine's `StartCharGen(creature, 1)` â€” `CHARGEN_MODE_LEVELUP` â€” to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
 2. **UI**, extending `core`, which is where the UI movie resources live. Two
@@ -157,7 +154,7 @@ vanilla.
 
 ### The inventory paperdoll
 
-The inventory screen's left column lists only condition and combat stats —
+The inventory screen's left column lists only condition and combat stats â€”
 health, energy and fatigue above the paperdoll, armour, defence, attack and
 damage below it. The patched `inventory` movie puts the six attributes and the
 resistances in the gap between them, showing the same numbers as the character
@@ -182,7 +179,7 @@ width.
 Worth knowing:
 
 - Values come from `GUI.SelectedChar.Attributes.<property>.Total/.Base/.Modifier`,
-  where `<property>` is the `properties.2da` row id — 1..6 for the six
+  where `<property>` is the `properties.2da` row id â€” 1..6 for the six
   attributes, because row 0 of that table is unused.
 - Each cell observes **its own leaf token** and takes the value handed to the
   callback. Observing the parent `GUI.SelectedChar` token does not fire when only
@@ -198,7 +195,7 @@ Worth knowing:
 **The layout numbers are constants, not measurements.** The retail rows sit at
 fixed positions in the movie (fatigue at y 53.3, the armour row at 340 with its
 icon's ink a few pixels higher), and `getBounds` does not work inside this movie
-— a runtime measurement silently does nothing, which looks like "the change had
+â€” a runtime measurement silently does nothing, which looks like "the change had
 no effect". `ATTRIBUTE_ROW_TOP` and the column right-edges in `Inventory.as` were
 checked against screenshots of the real screen, so change them together with a
 look at the screen.
@@ -218,14 +215,14 @@ Two further traps:
 
 - The columns are **abbreviated**: `StrAdjust`, `DexAdjust`, `WillAdjust`,
   `MagAdjust`, `ConAdjust`. Appending `Adjust` to a display name builds
-  `"StrengthAdjust"`, which does not exist, and every lookup returns 0 — the
+  `"StrengthAdjust"`, which does not exist, and every lookup returns 0 â€” the
   floor then collapses to a flat 10 and looks like it "works".
 - **Cunning is called Intelligence in the 2DAs.** It has no `CunAdjust` column
   anywhere; it is `IntAdjust`. Without that mapping Cunning floors at 10 while
   character creation shows 11.
 
 So the id-to-column map is explicit in `AdjustColumnFor`, and the table columns
-are read by name via `Get2DAValueByColumnName`. That call is supported — vanilla
+are read by name via `Get2DAValueByColumnName`. That call is supported â€” vanilla
 uses it in `RaceGenderScene.as`.
 
 ### The attribute floor is a choice, and both are built
@@ -233,12 +230,12 @@ uses it in `RaceGenderScene.as`.
 Nothing in the game records "the points this character actually spent", so the
 mod has to decide the lowest value it will refund to:
 
-- **starting-value floor** — `10 + race adjust + class adjust` per attribute.
+- **starting-value floor** â€” `10 + race adjust + class adjust` per attribute.
   This is what the character was given, so the only thing that can come back is
   what the player spent. A level-1 character who never allocated anything ends
   with nothing to reclaim, which is correct but means the pane is inert for
   them.
-- **flat 10 floor** — every attribute floors at 10, so a rebuild starts from a
+- **flat 10 floor** â€” every attribute floors at 10, so a rebuild starts from a
   blank slate. This is more useful for rebuilding, but it hands back the race
   and class points too, which the character never spent.
 
@@ -246,20 +243,19 @@ Since this is a preference rather than a defect, both are built and the
 installer picks:
 
 ```
-powershell -File build\deploy.ps1 -Ftg -AttributeFloor Starting   # default
-powershell -File build\deploy.ps1 -Ftg -AttributeFloor Ten
+powershell -File build\deploy.ps1 -AttributeFloor Starting   # default
+powershell -File build\deploy.ps1 -AttributeFloor Ten
 ```
 
 The two are the same patch set with `UseStartingValueFloor` flipped at build
-time, so they cannot drift apart. `ui\build-all.ps1` builds all four
-combinations of movie base and floor:
+time, so they cannot drift apart. `ui\build-all.ps1` builds both floors plus
+the two movies that have no variants:
 
 ```
-ui\levelup.swf          vanilla base, starting-value floor
-ui\levelup_ten.swf      vanilla base, flat 10 floor
-ui\levelup_ftg.swf      FtG base,     starting-value floor
-ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+ui\levelup.swf          starting-value floor
+ui\levelup_ten.swf      flat 10 floor
 ui\portraits.swf        party-bar portraits (no variants)
+ui\inventory.swf        paperdoll stat rows (no variants)
 ```
 
 `ui\portraits.swf` is the second patched movie, shipped in both the addin's
@@ -271,89 +267,24 @@ while that creature has a point to spend.
 Note that the point counter above the list is the engine's own
 (`Attributes.34`, the unspent attribute points), not something this mod seeds.
 
-## Using this with FtG UI Mod
+## UI mods
 
-FtG UI Mod ships its **own** `levelup.swf`, in the same `core` mount point as
-this mod's. Two addins cannot both own that resource, so whichever loads last
-wins — and a stock build of this mod would either throw away that mod's
-level-up changes (if ours wins) or lose this mod's patches (if theirs wins).
+FtG UI Mod is **not supported**. The level-up movie here is built from the
+vanilla screen, and it is installed into `packages\core\override\levelup.swf`.
 
-So the mod builds **on top of theirs** when it is enabled. The same eight
-patches, ported to their ActionScript, are applied to their movie:
+That placement is deliberate: an addin that ships its own `levelup.swf` in the
+same `core` mount point cannot be outranked by `AddIns.xml` priority, but
+resources under `packages\core\override` are merged after every addin. So with
+`FTG_UIMOD` installed, this mod's screen is the one the game shows — FtG's
+level-up changes are replaced, and any other part of FtG that lives in its
+movie is gone with it. Disable `FTG_UIMOD` to avoid two mods fighting over the
+same file.
 
-```
-ui\movies\levelup\      patches against the vanilla movie
-ui\movies\levelup_ftg\  the same intent, ported to FtG UI Mod's movie
-```
-
-`deploy.ps1` checks `AddIns.xml` for `FTG_UIMOD ... Enabled="1"` and picks the
-right base automatically; `-Ftg` forces the FtG base, and `dazip.ps1 -Ftg`
-packages it.
-
-**The erfs alone are not enough.** Two addins can ship the same `core` resource
-and `AddIns.xml` does not decide who wins: with FtG UI Mod enabled its
-`levelup.swf` is the one the game used, even though this mod's `AddInItem` has a
-higher `Priority` (160 vs 100) and sits last in the list. So the install also
-writes the movie to the core override folder:
-
-```
-Documents\BioWare\Dragon Age\packages\core\override\levelup.swf
-Documents\BioWare\Dragon Age\packages\core\override\portraits.swf
-```
-
-Resources there are merged after the addins, so those copies cannot be
-outranked. They are always the same builds as the erf, and an unrelated file
-already sitting at either path is backed up to `levelup.swf.bak` or
-`portraits.swf.bak` rather than silently replaced.
-
-**Re-run the install whenever you enable or disable FtG UI Mod.** The base is
-chosen at install time, so the override file holds whichever movie was correct
-when the install last ran. Toggle the mod, re-run, restart the game — one
-install covers both cases, no second package to keep track of.
-
-`build\ui-base.ps1` makes that choice, and both `deploy.ps1` and
-`dazip.ps1 -Install` use it, so they cannot disagree about which movie to ship.
-
-**Packaging never auto-detects the UI base.** `dazip.ps1` without `-Install`
-does not look at whether FtG UI Mod is installed: the base is fixed per package
-by `-Ftg`. That way a `.dazip` always contains what its name says, instead of
-whatever happened to be enabled on the machine that built it.
-
-The `vanilla-*` packages work for everyone. The `ftg-*` packages are only
-correct for players running FtG UI Mod, and a vanilla-based package installed
-over that mod would hide its level-up changes.
-
-**The `ftg-*` packages contain FtG UI Mod's own `levelup.swf`, patched.** That
-movie is that author's work, not ours; what this repo adds is the patch set in
-`ui/movies/levelup_ftg/patches/`. Check that mod's permissions before handing
-those two packages out, and credit it. Anyone running FtG UI Mod can also get
-the same result locally without redistribution: `deploy.ps1` rebuilds the
-patched movie from their own copy, or `ui\levelup_ftg.swf` can be copied to
-`packages\core\override\levelup.swf` after installing.
-
-Our UI addin is registered at `Priority="160"`, above FtG UI Mod's `100`; that
-is kept for tidiness, but the override file is what actually decides.
-
-Three of the eight files FtG's movie is patched in are byte-identical to
-vanilla's, so those patches apply untouched; `LevelUp.as` is restructured
-(their book-menu scaling), so that one is ported by hand.
-
-To rebuild the FtG variant, its movie has to be extracted from
-`AddIns\FTG_UIMOD\core\data\FTG_UIMOD_modcore.erf` into
-`ui\movies\levelup_ftg\vanilla.swf` first (it is a compressed `CWS` SWF, unlike
-the headerless vanilla ones), then:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ui\make-patches.ps1 -Movie levelup_ftg -Refresh
-powershell -ExecutionPolicy Bypass -File ui\build-movie.ps1 -Movie levelup_ftg
-```
-
-Nothing of that mod is redistributed: its movie is a local build input and is
-`.gitignore`d, and only our own patches against it are in this repo.
-
+The same override trick is used for `portraits.swf`. `inventory.swf` ships only
+inside the addin's core ERF, because no UI mod ships that resource.
 ## Building
 
-The script must be compiled with the **Dragon Age Toolset** — there is no
+The script must be compiled with the **Dragon Age Toolset** â€” there is no
 standalone `.nss`/`.ncs` compiler. Open `src/respec1.nss` in the Toolset,
 compile it, then:
 
@@ -386,7 +317,7 @@ and Java, plus the extracted vanilla movie. See [Notes](#notes).
 `build-movie.ps1` compares each exported script with its patched copy and imports
 just the changed ones (usually one to eight files). FFDec recompiles everything it
 is given, so importing the whole tree replaces BioWare's bytecode for code we
-never meant to touch — and that is not a harmless no-op: doing it to the inventory
+never meant to touch â€” and that is not a harmless no-op: doing it to the inventory
 movie made the game crash with a stack overflow the moment an item was dropped on
 an equipment slot, while the patch itself was fine all along. Leaving the rest of
 the movie byte-identical to the shipped one removes that whole class of bug, and
@@ -398,7 +329,6 @@ makes builds much faster.
 src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
-ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's movie
 ui/movies/portraits/patches/*.patch  party-bar portrait indicator
 ui/movies/inventory/patches/*.patch  paperdoll attribute and resistance rows
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
@@ -417,7 +347,7 @@ compile output and the Documents folder automatically. Both accept overrides
 
 **Not in this repo, by design.** The vanilla movie, the decompiled BioWare
 ActionScript and the engine `.ldf` files are build *inputs* and are `.gitignore`d
-— they are BioWare's and are not redistributed here. Only our own patches
+â€” they are BioWare's and are not redistributed here. Only our own patches
 against them are.
 
 **Take the movies from the newest patch, not from `guiexport.erf`.** The game
@@ -449,7 +379,7 @@ These are headerless SWFs: prepending an 8-byte `FWS` header (`"FWS"` + version
 
 ## Credits and licence
 
-- Respecialisation mechanism (remove ability → refund the point pool) is
+- Respecialisation mechanism (remove ability â†’ refund the point pool) is
   credited to **Peter 'weriK' Kovacs**, *Character Respecialization*
   (Nexus mod 14), reused under that mod's permission grant: modification and
   redistribution of improvements allowed **with credit**. No selling and no
@@ -458,5 +388,5 @@ These are headerless SWFs: prepending an 8-byte `FWS` header (`"FWS"` + version
   BioWare's own 2DA sources shipped with the Toolset
   (`tools\Source\2DA\rules\ABI_base.xls`). Deriving them corrected a latent bug
   in the original tables: `MASTER_COMBAT_TRAINING` is id `100103`, not `100104`.
-- Dragon Age: Origins and its assets are © BioWare / Electronic Arts. This is an
+- Dragon Age: Origins and its assets are Â© BioWare / Electronic Arts. This is an
   unofficial fan modification and is not affiliated with or endorsed by them.

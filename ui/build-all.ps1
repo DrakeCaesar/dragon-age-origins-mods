@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Builds every level-up movie variant: two movie bases times two attribute
-    floors, four movies in all, plus the two single-build movies.
+    Builds every level-up movie variant: one movie base times two attribute
+    floors, plus the two single-build movies.
 
 .DESCRIPTION
     The variants exist because the attribute floor is a behavioural choice
@@ -10,8 +10,6 @@
 
         ui\levelup.swf          vanilla base, start-value floor
         ui\levelup_ten.swf      vanilla base, flat 10 floor
-        ui\levelup_ftg.swf      FtG base,     start-value floor
-        ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
         ui\portraits.swf        party-bar portraits, no variants
         ui\inventory.swf        paperdoll stat rows, no variants
 
@@ -35,10 +33,8 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvoca
 $build = Join-Path $here 'build-movie.ps1'
 
 $variants = @(
-    @{ Movie = 'levelup';     Floor = 'Starting'; Label = 'vanilla base, starting-value floor' }
-    @{ Movie = 'levelup';     Floor = 'Ten';      Label = 'vanilla base, flat 10 floor' }
-    @{ Movie = 'levelup_ftg'; Floor = 'Starting'; Label = 'FtG base, starting-value floor' }
-    @{ Movie = 'levelup_ftg'; Floor = 'Ten';      Label = 'FtG base, flat 10 floor' }
+    @{ Movie = 'levelup';     Floor = 'Starting'; Label = 'starting-value floor' }
+    @{ Movie = 'levelup';     Floor = 'Ten';      Label = 'flat 10 floor' }
 )
 
 $failed = @()

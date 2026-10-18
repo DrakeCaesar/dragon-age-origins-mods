@@ -6,8 +6,6 @@ build/dist/
 src/*.ncs
 ui/levelup.swf
 ui/levelup_ten.swf
-ui/levelup_ftg.swf
-ui/levelup_ftg_ten.swf
 ui/portraits.swf
 ui/inventory.swf
 

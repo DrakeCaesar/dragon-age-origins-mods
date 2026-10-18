@@ -103,27 +103,30 @@ function Get-DaoLevelupMovie {
     throw "$rel not found. Build it with: ui\build-movie.ps1 -Movie $(if ($useFtg) { 'levelup_ftg' } else { 'levelup' }) -AttributeFloor $(if ($Floor -eq 'ten') { 'Ten' } else { 'Starting' })."
 }
 
-function Install-DaoLevelupOverride {
+function Install-DaoMovieOverride {
     <#
     .SYNOPSIS
-        Copies a level-up movie to packages\core\override, where no addin can
+        Copies a patched UI movie to packages\core\override, where no addin can
         outrank it. Returns a line describing what it did.
+    .PARAMETER Name
+        Resource name the movie is installed as. Default: levelup
     #>
     param(
         [Parameter(Mandatory)] [string] $Docs,
-        [Parameter(Mandatory)] [string] $Movie
+        [Parameter(Mandatory)] [string] $Movie,
+        [string] $Name = 'levelup'
     )
 
     $ovrDir  = Join-Path $Docs 'packages\core\override'
-    $ovrFile = Join-Path $ovrDir 'levelup.swf'
+    $ovrFile = Join-Path $ovrDir "$Name.swf"
     if (-not (Test-Path -LiteralPath $ovrDir)) { New-Item -ItemType Directory -Force -Path $ovrDir | Out-Null }
 
-    $line = "$Movie -> $ovrFile  (outranks every addin's levelup.swf)"
+    $line = "$Movie -> $ovrFile  (outranks every addin's $Name.swf)"
     if (Test-Path -LiteralPath $ovrFile) {
         $same = (Get-FileHash -LiteralPath $ovrFile).Hash -eq (Get-FileHash -LiteralPath $Movie).Hash
         if (-not $same -and -not (Test-Path -LiteralPath "$ovrFile.bak")) {
             Copy-Item -LiteralPath $ovrFile -Destination "$ovrFile.bak"
-            $line = "$line  [previous file kept as levelup.swf.bak]"
+            $line = "$line  [previous file kept as $Name.swf.bak]"
         }
     }
     Copy-Item -LiteralPath $Movie -Destination $ovrFile -Force

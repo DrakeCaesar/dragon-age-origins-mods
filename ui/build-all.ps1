@@ -12,6 +12,7 @@
         ui\levelup_ten.swf      vanilla base, flat 10 floor
         ui\levelup_ftg.swf      FtG base,     start-value floor
         ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+        ui\portraits.swf        party-bar portraits, no variants
 
     Each variant is the same patch set with UseStartingValueFloor flipped at
     build time, so the four cannot drift apart. A variant is skipped when its
@@ -66,6 +67,30 @@ foreach ($v in $variants) {
 }
 
 Write-Host ""
+# The portrait movie carries no attribute floor, so it is not a level-up
+# variant: it is built once and ships in every package.
+$portraitBase = Join-Path $here 'movies\portraits\vanilla.swf'
+if (Test-Path -LiteralPath $portraitBase) {
+    Write-Host "-- portraits"
+    $args = @('-NoProfile', '-File', $build, '-Movie', 'portraits', '-Java', $Java)
+    if ($FfdecJar) { $args += @('-FfdecJar', $FfdecJar) }
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powershell @args 2>&1 | ForEach-Object {
+            if ($_ -match '^(Built|Verify|Patch|Import|Base)') { Write-Host "  $_" }
+        }
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    if ($LASTEXITCODE -ne 0) { $failed += 'portraits' }
+    Write-Host ""
+}
+else {
+    Write-Host "Skip    : portraits -- $portraitBase is missing"
+    Write-Host ""
+}
+
 if ($failed.Count -gt 0) {
     Write-Host "FAILED : $($failed -join ', ')"
     exit 1

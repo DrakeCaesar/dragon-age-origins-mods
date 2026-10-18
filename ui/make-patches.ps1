@@ -63,7 +63,16 @@ if ($Refresh) {
     if (-not (Test-Path -LiteralPath $FfdecJar)) { throw "ffdec.jar not found: '$FfdecJar'." }
     if (Test-Path -LiteralPath $baseExport) { Remove-Item -Recurse -Force $baseExport }
     Write-Host "Export  : $Vanilla -> $baseExport"
-    & $Java -jar $FfdecJar -export script $baseExport $Vanilla 2>&1 | Select-Object -Last 1
+    # FFDec writes warnings to stderr, which 'Stop' turns into a terminating
+    # error, so run it with 'Continue' and check the exit code instead.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Java -jar $FfdecJar -export script $baseExport $Vanilla 2>&1 | Select-Object -Last 1
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    if ($LASTEXITCODE -ne 0) { throw "FFDec export failed (exit $LASTEXITCODE)." }
 }
 
 if (-not (Test-Path -LiteralPath $baseExport)) { throw "Pinned base not found: '$baseExport'. Pass -Refresh." }

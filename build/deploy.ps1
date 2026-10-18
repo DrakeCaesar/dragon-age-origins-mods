@@ -266,11 +266,13 @@ if (Test-Path -LiteralPath $staleUi) {
 }
 
 # --------------------------------------------------------- 2. UI addin
-# One movie is patched: the level-up screen itself, which is what makes an
-# existing build editable once the screen is open. Which base movie it is layered
-# on is decided by build\ui-base.ps1, which dazip.ps1 shares -- FtG UI Mod ships
-# its own levelup.swf in the same "core" mount point, so the choice has to be
-# made at install time and both paths must agree. -Ftg forces the FtG base.
+# Two movies are patched: the level-up screen itself, which makes an existing
+# build editable once the screen is open, and the party-bar portrait, whose
+# level-up indicator is kept visible so the screen can be reached at any time.
+# Which base the level-up movie is layered on is decided by build\ui-base.ps1,
+# which dazip.ps1 shares -- FtG UI Mod ships its own levelup.swf in the same
+# "core" mount point, so the choice has to be made at install time and both
+# paths must agree. -Ftg forces the FtG base.
 $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg -Floor $AttributeFloor.ToLower()
 $uiFile = $uiBase.File
 if ($uiBase.Note) { Write-Warning $uiBase.Note }
@@ -285,6 +287,7 @@ else {
 
 $uiMovies = @(
     @{ Name = 'levelup';   File = $uiFile }
+    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"
@@ -306,12 +309,14 @@ if ($NoUi) {
     [System.IO.File]::WriteAllBytes($uiErf, (New-DaoErf -Entries $coreEntries))
     Write-Host "UI       -> $uiErf  (same addin, core tree)"
 
-    # The same movie also goes to the core override folder, because the erfs are
+    # The same movies also go to the core override folder, because the erfs are
     # not enough: with FtG UI Mod enabled its levelup.swf is the one the game
     # uses, no matter what AddIns.xml says about priority or order. Resources
-    # under packages\core\override are merged after the addins, so this copy
-    # cannot be outranked, and it is always the same build as the erfs above.
-    Write-Host "Override : $(Install-DaoLevelupOverride -Docs $daDocs -Movie (Join-Path $root $uiFile))"
+    # under packages\core\override are merged after the addins, so these copies
+    # cannot be outranked, and they are always the same builds as the erfs above.
+    foreach ($m in $uiMovies) {
+        Write-Host "Override : $(Install-DaoMovieOverride -Docs $daDocs -Movie (Join-Path $root $m.File) -Name $m.Name)"
+    }
 }
 
 # --------------------------------------------------------- 4. register

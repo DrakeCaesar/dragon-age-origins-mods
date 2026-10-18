@@ -1,0 +1,33 @@
+﻿diff --git a/scripts/__Packages/SharedLibrary/Portrait.as b/scripts/__Packages/SharedLibrary/Portrait.as
+index a8eadef..e22862c 100644
+--- a/scripts/__Packages/SharedLibrary/Portrait.as
++++ b/scripts/__Packages/SharedLibrary/Portrait.as
+@@ -175,19 +175,22 @@ class SharedLibrary.Portrait extends GUI.Element
+       this.AlertParalyze_mc_init = this.CreateAlertInitFunction(this.m_sCreatureToken + ".Paralyzed",this.ALERT_PARALYZE_CONTINOUS);
+       TokenManager.AddTokenObserverWithID(_OBSERVER_ID.PORTRAIT_LEVELUP_RANGE + this.LocalIndex,mcPortrait.m_sCreatureToken + ".PortraitLevelUp",function(a_bCanLevelUp)
+       {
+-         if(a_bCanLevelUp == 0)
+-         {
+-            MovieUtils.HideMovie(mcPortrait.LevelUpIndicator_mc);
+-         }
+-         else
++         mcPortrait.LevelUpIndicator_mc.gotoAndStop(29);
++         MovieUtils.ShowMovie(mcPortrait.LevelUpIndicator_mc);
++         if(a_bCanLevelUp != 0)
+          {
+             mcPortrait.LevelUpIndicator_mc.gotoAndPlay(0);
+-            MovieUtils.ShowMovie(mcPortrait.LevelUpIndicator_mc);
+          }
+       }
+       );
+       this.LevelUpIndicator_mc_init = function()
+       {
++         this.gotoAndStop(29);
++         MovieUtils.ShowMovie(this);
++         if(Number(ExternalCommands.GetValue(mcPortrait.m_sCreatureToken + ".PortraitLevelUp")) != 0)
++         {
++            this.gotoAndPlay(0);
++         }
+          this.AddBehaviour(Behaviour.DisplayTooltip);
+          this.TooltipType = Behaviour.DisplayTooltip.TOOLTIP_TYPE_SIMPLE_FLOATING;
+          this.HostAnchor = Behaviour.DisplayTooltip.ANCHOR_RIGHT;

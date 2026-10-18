@@ -82,23 +82,25 @@ picks you made outside it editable.
 The script does one thing — open the screen. It changes nothing on its own, so
 there is nothing to get wrong if you run it and then close the screen.
 
-> **Why the level-up indicator is not the trigger.** The obvious button is the
-> indicator on the hero's portrait, and it cannot work with every point spent:
-> clicking it sends `GUI.GoToLevelUp`, which the engine refuses unless the
-> character has unspent points. Everything a movie can reach was tried — the
-> flag cannot be set from the UI, `GUI.RunConsoleCommand` is ignored, and every
-> message that might start a session was tested. The screen *can* be shown
-> without one (`GUI.GoToGuiWithFollowerMessage "LevelUp" <id>` does open it),
-> but then the engine has no `CharGenCreature`: the screen reads `NaN` for every
-> value and has nothing to apply edits to.
+> **The portrait indicator is the other way in.** Clicking it sends
+> `GUI.GoToLevelUp`, and that message's handler does start the session — it was
+> only ever refused because it tests the character's "can level up" predicate
+> (`daorigins.exe+2ACBC0`) first, which is false once every point is spent.
+> DAFix (`[Level Up] Unlock`) skips that single test at the call site, so the
+> handler creates the session and pushes the screen for a fully-spent character.
+> The predicate itself is left intact, because it also produces the
+> `PortraitLevelUp` token: the indicator stays visible at all times and only
+> animates while there is really something to spend. Without DAFix, the script
+> below is still the way in.
 >
 > **Why a session is unavoidable.** The screen is a view onto engine state, not
 > a store of its own: it reads `CharGenCreature.*` in 46 places and applies every
 > change through the chargen subsystem (`GUILevelUp.CharGenAssignAbility`,
 > `GUILevelUp.CharGenAssignAttribute`, committed by `GUILevelUp.CharGenEnd`).
 > Only the engine's own level-up flow and `StartCharGen(creature, 1)` create that
-> session, and both are script-only. So the script is the entry point, and the
-> indicator still behaves exactly as vanilla.
+> session. Showing the screen by other means (`GUI.GoToGuiWithFollowerMessage
+> "LevelUp" <id>`) opens it with no creature: it reads `NaN` for every value and
+> has nothing to apply edits to.
 
 > **No unspent points are required to see the screen.** The movie normally skips
 > its panes when there is nothing to spend (`bWeHadPointsInitially =
@@ -201,7 +203,14 @@ ui\levelup.swf          vanilla base, starting-value floor
 ui\levelup_ten.swf      vanilla base, flat 10 floor
 ui\levelup_ftg.swf      FtG base,     starting-value floor
 ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+ui\portraits.swf        party-bar portraits (no variants)
 ```
+
+`ui\portraits.swf` is the second patched movie, shipped in both the addin's
+`core` erf and `packages\core\override\portraits.swf`. It keeps the level-up
+indicator on every party portrait visible at all times: frame 29 is where the
+icon art is fully opaque, so the clip parks there and only plays its animation
+while that creature has a point to spend.
 
 Note that the point counter above the list is the engine's own
 (`Attributes.34`, the unspent attribute points), not something this mod seeds.
@@ -233,11 +242,13 @@ writes the movie to the core override folder:
 
 ```
 Documents\BioWare\Dragon Age\packages\core\override\levelup.swf
+Documents\BioWare\Dragon Age\packages\core\override\portraits.swf
 ```
 
-Resources there are merged after the addins, so that copy cannot be outranked.
-It is always the same build as the erf, and an unrelated file already sitting at
-that path is backed up to `levelup.swf.bak` rather than silently replaced.
+Resources there are merged after the addins, so those copies cannot be
+outranked. They are always the same builds as the erf, and an unrelated file
+already sitting at either path is backed up to `levelup.swf.bak` or
+`portraits.swf.bak` rather than silently replaced.
 
 **Re-run the install whenever you enable or disable FtG UI Mod.** The base is
 chosen at install time, so the override file holds whichever movie was correct

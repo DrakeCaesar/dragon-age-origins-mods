@@ -218,6 +218,7 @@ $uiErf  = $null
 $movieFile = 'ui\levelup' + $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix + '.swf'
 $uiList = @(
     @{ Name = 'levelup';   File = $movieFile }
+    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"
@@ -336,7 +337,11 @@ try {
     $movie  = Join-Path $root $uiBase.File
     if ($uiBase.Note) { Write-Warning $uiBase.Note }
     if (Test-Path -LiteralPath $movie) {
-        Write-Host ("  override : " + (Install-DaoLevelupOverride -Docs $daDocs -Movie $movie))
+        Write-Host ("  override : " + (Install-DaoMovieOverride -Docs $daDocs -Movie $movie))
+    }
+    $portraits = Join-Path $root 'ui\portraits.swf'
+    if (Test-Path -LiteralPath $portraits) {
+        Write-Host ("  override : " + (Install-DaoMovieOverride -Docs $daDocs -Movie $portraits -Name 'portraits'))
     }
 } finally {
     $zip.Dispose()

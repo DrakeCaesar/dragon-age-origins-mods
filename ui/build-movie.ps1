@@ -117,6 +117,17 @@ $checks = @{
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')   # see above
         }
     }
+    # The party-bar portrait: its level-up indicator is always on screen, and only
+    # animates while the creature really has a point to spend. Frame 29 is the one
+    # where the icon art is fully opaque; the earlier frames are transparent.
+    'portraits' = @{
+        expected = @{
+            'scripts\__Packages\SharedLibrary\Portrait.as' = @('LevelUpIndicator_mc.gotoAndStop(29)', 'this.gotoAndStop(29)', 'if(a_bCanLevelUp != 0)')
+        }
+        forbidden = @{
+            'scripts\__Packages\SharedLibrary\Portrait.as' = @('MovieUtils.HideMovie(mcPortrait.LevelUpIndicator_mc)')
+        }
+    }
 }
 
 # -------------------------------------------------------------- 1. base copy

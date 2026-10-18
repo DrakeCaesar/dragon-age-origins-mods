@@ -29,6 +29,7 @@ ref/ui/
 ui/movies/*/_base/
 ui/movies/*/_work/
 ui/movies/*/_build/
+ui/movies/*/_import/
 ui/_export_check/
 ui/_pristine/
 ui/_verify/

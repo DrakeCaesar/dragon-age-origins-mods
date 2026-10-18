@@ -201,6 +201,35 @@ if ($checks.ContainsKey($Movie)) {
     Write-Warning "No verification checks defined for movie '$Movie'."
 }
 
+# ------------------------------------------- 3b. import only the changed scripts
+# FFDec recompiles every script it is given, so importing the whole tree replaces
+# BioWare's bytecode for code we never meant to touch. Importing only the scripts
+# that differ from the pinned base leaves the rest of the movie exactly as shipped.
+$importDir = Join-Path $movieDir '_import'
+if (Test-Path -LiteralPath $importDir) { Remove-Item -Recurse -Force $importDir }
+$importScripts = Join-Path $importDir 'scripts'
+$baseScripts = Join-Path $baseExport 'scripts'
+$stageScripts = Join-Path $stage 'scripts'
+$changedScripts = @()
+foreach ($file in Get-ChildItem $baseScripts -Recurse -File -Filter '*.as') {
+    $rel = $file.FullName.Substring($baseScripts.Length + 1)
+    $stagePath = Join-Path $stageScripts $rel
+    if (-not (Test-Path -LiteralPath $stagePath)) { continue }
+    if ((Get-FileHash $file.FullName).Hash -eq (Get-FileHash $stagePath).Hash) { continue }
+    $dest = Join-Path $importScripts $rel
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
+    Copy-Item -LiteralPath $stagePath -Destination $dest -Force
+    $changedScripts += ($rel -replace '\\', '/')
+}
+if ($changedScripts.Count -eq 0) {
+    Write-Host "Import  : no changed scripts, copying the vanilla movie"
+    Copy-Item -LiteralPath $vanilla -Destination $Out -Force
+    Write-Host ""
+    Write-Host "Built   : $Out  ($((Get-Item -LiteralPath $Out).Length) bytes)"
+    return
+}
+Write-Host ("Import  : {0} changed script(s): {1}" -f $changedScripts.Count, ($changedScripts -join ', '))
+
 # ---------------------------------------------------------------- 4. import
 Write-Host "Import  : $vanilla + patched scripts -> $Out"
 # FFDec is a Java program and writes warnings to stderr; with the default
@@ -209,7 +238,7 @@ Write-Host "Import  : $vanilla + patched scripts -> $Out"
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
 try {
-    & $Java -jar $FfdecJar -importScript $vanilla $Out $stage 2>&1 | Select-Object -Last 1
+    & $Java -jar $FfdecJar -importScript $vanilla $Out $importDir 2>&1 | Select-Object -Last 1
 } finally {
     $ErrorActionPreference = $prevEap
 }

@@ -378,6 +378,16 @@ These need
 [FFDec (JPEXS Free Flash Decompiler)](https://github.com/jindrapetrik/jpexs-decompiler)
 and Java, plus the extracted vanilla movie. See [Notes](#notes).
 
+**Only the scripts that differ from the pinned base are compiled into the movie.**
+`build-movie.ps1` compares each exported script with its patched copy and imports
+just the changed ones (usually one to eight files). FFDec recompiles everything it
+is given, so importing the whole tree replaces BioWare's bytecode for code we
+never meant to touch — and that is not a harmless no-op: doing it to the inventory
+movie made the game crash with a stack overflow the moment an item was dropped on
+an equipment slot, while the patch itself was fine all along. Leaving the rest of
+the movie byte-identical to the shipped one removes that whole class of bug, and
+makes builds much faster.
+
 ## Repository layout
 
 ```

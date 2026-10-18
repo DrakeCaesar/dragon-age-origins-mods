@@ -1,15 +1,15 @@
 ﻿diff --git a/scripts/__Packages/Inventory.as b/scripts/__Packages/Inventory.as
-index 2525022..3268626 100644
+index 2525022..6e79e6c 100644
 --- a/scripts/__Packages/Inventory.as
 +++ b/scripts/__Packages/Inventory.as
-@@ -37,9 +37,165 @@ class Inventory
+@@ -37,9 +37,180 @@ class Inventory
     static var ms_mcEquipment = null;
     static var ms_nEquipSlotHighlight = -1;
     static var ms_nFullOverlayIntervalID = 0;
 +   static var NUM_ATTRIBUTES = 6;
 +   static var ATTRIBUTE_OBSERVER_ID = 63000;
++   static var ms_bAttributeRefreshPending = false;
 +   static var ATTRIBUTE_ROW_DEPTH = 300;
-+   static var ATTRIBUTE_SYMBOL = "PaperDoll_stats_#Field";
 +   static var RESISTANCE_UIMAPPING = 1;
 +   static var ELEMENTAL_RESISTANCE_UIMAPPING = 3;
 +   // properties.2da has an unused row 0, so the six attributes are 1..6.
@@ -18,6 +18,8 @@ index 2525022..3268626 100644
 +   // placed by the position of its right edge. The SWF's placement data is
 +   // in twips, but ActionScript's _x/_y are pixels.
 +   static var ATTRIBUTE_FIELD_WIDTH = 60;
++   static var ATTRIBUTE_FIELD_HEIGHT = 20;
++   static var ATTRIBUTE_TEXT_INSET = 2;
 +   // Rows are centred by hand between the two retail rows either side of the
 +   // paperdoll. Their positions are fixed in the movie (fatigue at 53.3, the armour
 +   // row at 340 with the icon's ink starting a few pixels lower), and the values
@@ -93,42 +95,55 @@ index 2525022..3268626 100644
 +            nY = nY + Inventory.ATTRIBUTE_RESISTANCE_GAP;
 +         }
 +         var nDepth = Inventory.ATTRIBUTE_ROW_DEPTH + nRow * 4;
-+         // Every part of a row is an instance of the stat field symbol, so it
-+         // borrows the book font and its formatting. The parts are separate fields
-+         // so the columns line up even though the numbers differ in width.
++         // Each part of a row is its own text field so the three number columns
++         // keep a fixed right edge even though the values differ in width.
 +         var mcLabel = Inventory.MakeAttributeColumn(mcStats,"AttributeLabel" + nRow,nDepth,Inventory.ATTRIBUTE_LABEL_X,nY,false);
 +         var mcTotal = Inventory.MakeAttributeColumn(mcStats,"AttributeTotal" + nRow,nDepth + 1,Inventory.ATTRIBUTE_TOTAL_RIGHT,nY,true);
 +         var mcBase = Inventory.MakeAttributeColumn(mcStats,"AttributeBase" + nRow,nDepth + 2,Inventory.ATTRIBUTE_BASE_RIGHT,nY,true);
 +         var mcModifier = Inventory.MakeAttributeColumn(mcStats,"AttributeModifier" + nRow,nDepth + 3,Inventory.ATTRIBUTE_MODIFIER_RIGHT,nY,true);
-+         mcLabel.SetText(Inventory.ShortLabel(CreatureUtils.LabelForProperty(aRows[nRow])));
++         Inventory.SetAttributeText(mcLabel,Inventory.ShortLabel(CreatureUtils.LabelForProperty(aRows[nRow])),false);
 +         mcStats.AttributeRows.push({property:aRows[nRow],total:mcTotal,base:mcBase,modifier:mcModifier});
 +         nY = nY + Inventory.ATTRIBUTE_ROW_HEIGHT;
 +         nRow = nRow + 1;
 +      }
 +      TokenManager.AddTokenObserverWithID(Inventory.ATTRIBUTE_OBSERVER_ID,"GUI.SelectedChar",function()
 +      {
-+         Inventory.UpdateAttributeRows();
++         // Reading a token back inside its own notification re-enters the token
++         // evaluation while it is still running, and the recursion runs the stack
++         // out - which is what crashed the game as soon as equipment changed the
++         // character. Refresh on the next frame instead, and only once per burst.
++         if(Inventory.ms_bAttributeRefreshPending == false)
++         {
++            Inventory.ms_bAttributeRefreshPending = true;
++            FuncUtils.CallWithDelay(Inventory.RefreshAttributeRows,0.01);
++         }
 +      }
 +      );
 +      Inventory.UpdateAttributeRows();
 +   }
++   static function RefreshAttributeRows()
++   {
++      Inventory.ms_bAttributeRefreshPending = false;
++      Inventory.UpdateAttributeRows();
++   }
 +   static function MakeAttributeColumn(a_mcParent, a_sName, a_nDepth, a_nX, a_nY, a_bRightAligned)
 +   {
-+      var mcField = a_mcParent.attachMovie(Inventory.ATTRIBUTE_SYMBOL,a_sName,a_nDepth);
-+      mcField._x = a_bRightAligned ? a_nX - Inventory.ATTRIBUTE_FIELD_WIDTH : a_nX;
-+      mcField._y = a_nY;
-+      if(mcField.TextField == undefined)
-+      {
-+         return mcField;
-+      }
-+      mcField.TextField._width = a_bRightAligned ? Inventory.ATTRIBUTE_FIELD_WIDTH : Inventory.ATTRIBUTE_LABEL_WIDTH;
-+      if(a_bRightAligned)
-+      {
-+         // Growing to the left keeps a common right edge, so a one digit bonus and
-+         // a two digit one end in the same place.
-+         mcField.TextField.autoSize = "right";
-+      }
++      // A plain engine text field, not an instance of the paperdoll's stat symbol:
++      // that symbol is a SharedLibrary.TextField element, so every attached copy
++      // runs the movie's element framework (init lookup, OnAdded, parent
++      // ChildAdded) and that is what sent the game into a stack overflow.
++      var nWidth = a_bRightAligned ? Inventory.ATTRIBUTE_FIELD_WIDTH : Inventory.ATTRIBUTE_LABEL_WIDTH;
++      var mcField = a_mcParent.createTextField(a_sName,a_nDepth,a_bRightAligned ? a_nX - nWidth : a_nX,a_nY + Inventory.ATTRIBUTE_TEXT_INSET,nWidth,Inventory.ATTRIBUTE_FIELD_HEIGHT);
++      mcField.html = true;
++      mcField.multiline = false;
++      mcField.wordWrap = false;
++      mcField.selectable = false;
 +      return mcField;
++   }
++   static function SetAttributeText(a_mcField, a_sText, a_bRightAligned)
++   {
++      // Same markup the paperdoll's own rows use, so the rows look native.
++      a_mcField.htmlText = "<p align=\"" + (a_bRightAligned ? "right" : "left") + "\"><font face=\"$BodyFont\" size=\"12\" color=\"#ffffff\">" + a_sText + "</font></p>";
 +   }
 +   static function UpdateAttributeRows()
 +   {
@@ -159,16 +174,16 @@ index 2525022..3268626 100644
 +            sPrefix = SharedLibrary.CoreStats.PositiveColorPrefix();
 +            sSuffix = SharedLibrary.CoreStats.ColorSuffix();
 +         }
-+         oRow.total.SetText(CreatureUtils.FormatPrecisionByProperty(nTotal,oRow.property));
-+         oRow.base.SetText(CreatureUtils.FormatPrecisionByProperty(nBase,oRow.property));
-+         oRow.modifier.SetText(sPrefix + sSign + Math.abs(nModifier) + sSuffix);
++         Inventory.SetAttributeText(oRow.total,CreatureUtils.FormatPrecisionByProperty(nTotal,oRow.property),true);
++         Inventory.SetAttributeText(oRow.base,CreatureUtils.FormatPrecisionByProperty(nBase,oRow.property),true);
++         Inventory.SetAttributeText(oRow.modifier,sPrefix + sSign + Math.abs(nModifier) + sSuffix,true);
 +         nRow = nRow + 1;
 +      }
 +   }
     static function StartScene()
     {
        if(GUISystem.RunningInGame == false)
-@@ -55,6 +211,7 @@ class Inventory
+@@ -55,6 +226,7 @@ class Inventory
        }
        Inventory.aCategoryNames = Array(Localization.Strings.LOC_CATEGORY_ALL,Localization.Strings.LOC_CATEGORY_WEAPONS,Localization.Strings.LOC_CATEGORY_ARMOR,Localization.Strings.LOC_CATEGORY_ACCESSORIES,Localization.Strings.LOC_CATEGORY_OTHER,Localization.Strings.LOC_CATEGORY_CRAFTING,Localization.Strings.LOC_CATEGORY_PLOT);
        Inventory.SetupInitFunctions();

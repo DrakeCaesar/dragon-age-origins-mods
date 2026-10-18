@@ -49,7 +49,7 @@ function Get-DaoLevelupMovie {
         Picks the level-up movie to ship for the current addin state.
     .OUTPUTS
         Hashtable: File (repo-relative), Base ('vanilla' or 'ftg'),
-        Floor ('starting' or 'ten'), FtgEnabled, Note (warning text or $null).
+        Floor ('starting' or 'ten'), Note (warning text or $null).
     .DESCRIPTION
         Four movies can be built, from the two movie bases times the two
         attribute floors:
@@ -58,6 +58,11 @@ function Get-DaoLevelupMovie {
             ui\levelup_ten.swf      vanilla base, flat 10 floor
             ui\levelup_ftg.swf      FtG base,     starting-value floor
             ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
+
+        The vanilla base is the default: this mod now deploys against the
+        unmodded level-up screen, so the replaced UI mod's movie is not used
+        even when that add-in is still installed. -ForceFtg opts into the FtG
+        base explicitly for anyone still running it.
 
         A missing flat-10 build falls back to the starting-value one, because
         that is the accurate behaviour rather than the permissive one.
@@ -70,19 +75,16 @@ function Get-DaoLevelupMovie {
         [string] $Floor = 'starting'
     )
 
-    $ftgEnabled = $false
-    if (Test-Path -LiteralPath $AddInsXml) {
-        $item = [regex]::Match((Get-Content -LiteralPath $AddInsXml -Raw), '(?s)<AddInItem[^>]*UID="FTG_UIMOD"[^>]*>')
-        if ($item.Success -and $item.Value -match 'Enabled="1"') { $ftgEnabled = $true }
-    }
-
-    $useFtg = $ForceFtg -or $ftgEnabled
+    # Deliberately not keyed off whether FtG UI Mod is installed or enabled: its
+    # UI may have been replaced by another mod, in which case the vanilla movie
+    # is the correct base. Only an explicit -ForceFtg selects FtG's.
+    $useFtg = $ForceFtg.IsPresent
     $base   = if ($useFtg) { 'ftg' } else { 'vanilla' }
     $name   = 'levelup' + $(if ($useFtg) { '_ftg' } else { '' }) + $(if ($Floor -eq 'ten') { '_ten' } else { '' })
     $rel    = "ui\$name.swf"
 
     if (Test-Path -LiteralPath (Join-Path $Root $rel)) {
-        return @{ File = $rel; Base = $base; Floor = $Floor; FtgEnabled = $ftgEnabled; Note = $null }
+        return @{ File = $rel; Base = $base; Floor = $Floor; Note = $null }
     }
 
     # Missing flat-10 build: ship the accurate starting-value one instead.
@@ -90,25 +92,15 @@ function Get-DaoLevelupMovie {
         $fallback = 'ui\levelup' + $(if ($useFtg) { '_ftg' } else { '' }) + '.swf'
         if (Test-Path -LiteralPath (Join-Path $Root $fallback)) {
             return @{
-                File       = $fallback
-                Base       = $base
-                Floor      = 'starting'
-                FtgEnabled = $ftgEnabled
-                Note       = "$rel not found, so the starting-value floor is being shipped instead of the flat-10 one. Build it with: ui\build-movie.ps1 -Movie $name -AttributeFloor Ten -Java <java>"
+                File  = $fallback
+                Base  = $base
+                Floor = 'starting'
+                Note  = "$rel not found, so the starting-value floor is being shipped instead of the flat-10 one. Build it with: ui\build-movie.ps1 -Movie $name -AttributeFloor Ten -Java <java>"
             }
         }
     }
 
-    if ($ForceFtg) {
-        throw "$rel not found. Build it with: ui\build-movie.ps1 -Movie $(if ($useFtg) { 'levelup_ftg' } else { 'levelup' }) -AttributeFloor $(if ($Floor -eq 'ten') { 'Ten' } else { 'Starting' })."
-    }
-    return @{
-        File       = 'ui\levelup.swf'
-        Base       = 'vanilla'
-        Floor      = 'starting'
-        FtgEnabled = $true
-        Note       = "FtG UI Mod is enabled but ui\levelup_ftg.swf is missing, so the vanilla-based movie is being shipped and that mod's level-up changes will be hidden. Build it with: ui\build-movie.ps1 -Movie levelup_ftg"
-    }
+    throw "$rel not found. Build it with: ui\build-movie.ps1 -Movie $(if ($useFtg) { 'levelup_ftg' } else { 'levelup' }) -AttributeFloor $(if ($Floor -eq 'ten') { 'Ten' } else { 'Starting' })."
 }
 
 function Install-DaoLevelupOverride {

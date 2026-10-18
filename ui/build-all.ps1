@@ -51,8 +51,16 @@ foreach ($v in $variants) {
     Write-Host "-- $($v.Movie) / $($v.Floor)  ($($v.Label))"
     $args = @('-NoProfile', '-File', $build, '-Movie', $v.Movie, '-AttributeFloor', $v.Floor, '-Java', $Java)
     if ($FfdecJar) { $args += @('-FfdecJar', $FfdecJar) }
-    & powershell @args 2>&1 | ForEach-Object {
-        if ($_ -match '^(Built|Floor|Verify|Patch|Import|Base)') { Write-Host "  $_" }
+    # Native stderr (Java warnings, FFDec progress) must not become a
+    # terminating error here, or one warning would fail the whole variant.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powershell @args 2>&1 | ForEach-Object {
+            if ($_ -match '^(Built|Floor|Verify|Patch|Import|Base)') { Write-Host "  $_" }
+        }
+    } finally {
+        $ErrorActionPreference = $prevEap
     }
     if ($LASTEXITCODE -ne 0) { $failed += "$($v.Movie)/$($v.Floor)" }
 }

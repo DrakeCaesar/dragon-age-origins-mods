@@ -274,8 +274,8 @@ if (Test-Path -LiteralPath $staleUi) {
 $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -ForceFtg:$Ftg -Floor $AttributeFloor.ToLower()
 $uiFile = $uiBase.File
 if ($uiBase.Note) { Write-Warning $uiBase.Note }
-elseif ($uiBase.Base -eq 'ftg') { Write-Host "UI       : FtG UI Mod is enabled -> building on its level-up movie" }
-else { Write-Host "UI       : FtG UI Mod is not enabled -> using the vanilla-based movie" }
+elseif ($uiBase.Base -eq 'ftg') { Write-Host "UI       : -Ftg given -> building on FtG UI Mod's level-up movie" }
+else { Write-Host "UI       : using the vanilla-based level-up movie" }
 if ($uiBase.Floor -eq 'ten') {
     Write-Host "UI       : attribute floor = flat 10 (rebuild from scratch; the character's starting values are not restored)"
 }

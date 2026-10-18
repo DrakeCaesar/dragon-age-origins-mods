@@ -184,7 +184,17 @@ if ($checks.ContainsKey($Movie)) {
 
 # ---------------------------------------------------------------- 4. import
 Write-Host "Import  : $vanilla + patched scripts -> $Out"
-& $Java -jar $FfdecJar -importScript $vanilla $Out $stage 2>&1 | Select-Object -Last 1
+# FFDec is a Java program and writes warnings to stderr; with the default
+# 'Stop' preference PowerShell turns native stderr into a terminating error,
+# which aborted the build on a harmless warning. Run it with 'Continue'.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    & $Java -jar $FfdecJar -importScript $vanilla $Out $stage 2>&1 | Select-Object -Last 1
+} finally {
+    $ErrorActionPreference = $prevEap
+}
+if ($LASTEXITCODE -ne 0) { throw "FFDec import failed for '$Movie' (exit $LASTEXITCODE)." }
 if (-not (Test-Path -LiteralPath $Out)) { throw "FFDec import produced no output movie." }
 
 Write-Host ""

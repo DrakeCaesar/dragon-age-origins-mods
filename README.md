@@ -367,6 +367,13 @@ the `guiexport` copies produces movies that render without the post-patch art
 fixes (button skins, specialization icons, portrait framing), so always base
 the build on the highest-numbered patch that ships the resource.
 
+The `guiexport` copies are not merely older, they are a different revision that
+looks pre-release: `portraits.gfx` there has no portrait background art at all
+(which is why a build against it lost the character-sheet background) and its
+`Attributes.8` token wiring predates the `AbilityUpkeepCost` token that
+`patch003` uses. A build against the wrong copy therefore silently reverts
+BioWare's own fixes.
+
 These are headerless SWFs: prepending an 8-byte `FWS` header (`"FWS"` + version
 `9` + total length) makes them parseable by FFDec.
 

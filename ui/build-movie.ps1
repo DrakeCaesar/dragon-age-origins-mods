@@ -128,6 +128,14 @@ $checks = @{
             'scripts\__Packages\SharedLibrary\Portrait.as' = @('MovieUtils.HideMovie(mcPortrait.LevelUpIndicator_mc)')
         }
     }
+    # The inventory paperdoll also carries the six attributes, each as a total plus
+    # the base-and-modifier breakdown the character record keeps in its tooltip.
+    'inventory' = @{
+        expected = @{
+            'scripts\__Packages\Inventory.as' = @('AddAttributeRows', 'UpdateAttributeRows', 'GUI.SelectedChar.Attributes.')
+        }
+        forbidden = @{}
+    }
 }
 
 # -------------------------------------------------------------- 1. base copy

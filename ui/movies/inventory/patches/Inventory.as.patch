@@ -1,0 +1,178 @@
+﻿diff --git a/scripts/__Packages/Inventory.as b/scripts/__Packages/Inventory.as
+index 2525022..3268626 100644
+--- a/scripts/__Packages/Inventory.as
++++ b/scripts/__Packages/Inventory.as
+@@ -37,9 +37,165 @@ class Inventory
+    static var ms_mcEquipment = null;
+    static var ms_nEquipSlotHighlight = -1;
+    static var ms_nFullOverlayIntervalID = 0;
++   static var NUM_ATTRIBUTES = 6;
++   static var ATTRIBUTE_OBSERVER_ID = 63000;
++   static var ATTRIBUTE_ROW_DEPTH = 300;
++   static var ATTRIBUTE_SYMBOL = "PaperDoll_stats_#Field";
++   static var RESISTANCE_UIMAPPING = 1;
++   static var ELEMENTAL_RESISTANCE_UIMAPPING = 3;
++   // properties.2da has an unused row 0, so the six attributes are 1..6.
++   static var ATTRIBUTE_FIRST_PROPERTY = 1;
++   // The stat field's inner text field is 60 pixels wide, so a column is
++   // placed by the position of its right edge. The SWF's placement data is
++   // in twips, but ActionScript's _x/_y are pixels.
++   static var ATTRIBUTE_FIELD_WIDTH = 60;
++   // Rows are centred by hand between the two retail rows either side of the
++   // paperdoll. Their positions are fixed in the movie (fatigue at 53.3, the armour
++   // row at 340 with the icon's ink starting a few pixels lower), and the values
++   // here were checked against screenshots of the real screen. Measuring them with
++   // getBounds does not work inside this movie.
++   static var ATTRIBUTE_ROW_TOP = 90;
++   static var ATTRIBUTE_ROW_HEIGHT = 17;
++   static var ATTRIBUTE_RESISTANCE_GAP = 9;
++   static var ATTRIBUTE_LABEL_X = 2;
++   static var ATTRIBUTE_LABEL_WIDTH = 46;
++   static var ATTRIBUTE_TOTAL_RIGHT = 66;
++   static var ATTRIBUTE_BASE_RIGHT = 84;
++   static var ATTRIBUTE_MODIFIER_RIGHT = 102;
+    function Inventory()
+    {
+    }
++   static function ShortLabel(a_sLabel)
++   {
++      // Three letters is the usual abbreviation, but a fourth is kept when it is a
++      // consonant: "Str" but "Dext", "Will", "Cons".
++      if(a_sLabel == null || a_sLabel.length <= 4)
++      {
++         return a_sLabel;
++      }
++      var sFourth = a_sLabel.substr(3,1).toLowerCase();
++      var bVowel = sFourth == "a" || sFourth == "e" || sFourth == "i" || sFourth == "o" || sFourth == "u";
++      return a_sLabel.substr(0,bVowel ? 3 : 4);
++   }
++   static function BuildAttributeRowList()
++   {
++      var aRows = new Array();
++      var nRow = 0;
++      while(nRow < Inventory.NUM_ATTRIBUTES)
++      {
++         aRows.push(Inventory.ATTRIBUTE_FIRST_PROPERTY + nRow);
++         nRow = nRow + 1;
++      }
++      // The resistances are found the way the character record finds them: rows of
++      // properties.2da whose UI mapping marks them as a resistance.
++      var nProperties = Number(ExternalCommands.GetNum2DARows(_2DA.TABLE_PROPERTIES));
++      var nProperty = 1;
++      while(nProperty < nProperties)
++      {
++         var nMapping = Number(ExternalCommands.Get2DAValueByRowIndexColumnHash(_2DA.TABLE_PROPERTIES,nProperty,_2DA.HASH_UIMAPPING));
++         if(nMapping == Inventory.RESISTANCE_UIMAPPING || nMapping == Inventory.ELEMENTAL_RESISTANCE_UIMAPPING)
++         {
++            aRows.push(nProperty);
++         }
++         nProperty = nProperty + 1;
++      }
++      return aRows;
++   }
++   static function AddAttributeRows()
++   {
++      var mcStats = _root.Stats_mc;
++      if(mcStats == undefined)
++      {
++         FuncUtils.CallWithDelay(Inventory.AddAttributeRows,0.25);
++         return;
++      }
++      if(mcStats.AttributeRows != undefined)
++      {
++         return;
++      }
++      var aRows = Inventory.BuildAttributeRowList();
++      mcStats.AttributeRows = new Array();
++      var nY = Inventory.ATTRIBUTE_ROW_TOP;
++      var nRow = 0;
++      while(nRow < aRows.length)
++      {
++         if(nRow == Inventory.NUM_ATTRIBUTES)
++         {
++            nY = nY + Inventory.ATTRIBUTE_RESISTANCE_GAP;
++         }
++         var nDepth = Inventory.ATTRIBUTE_ROW_DEPTH + nRow * 4;
++         // Every part of a row is an instance of the stat field symbol, so it
++         // borrows the book font and its formatting. The parts are separate fields
++         // so the columns line up even though the numbers differ in width.
++         var mcLabel = Inventory.MakeAttributeColumn(mcStats,"AttributeLabel" + nRow,nDepth,Inventory.ATTRIBUTE_LABEL_X,nY,false);
++         var mcTotal = Inventory.MakeAttributeColumn(mcStats,"AttributeTotal" + nRow,nDepth + 1,Inventory.ATTRIBUTE_TOTAL_RIGHT,nY,true);
++         var mcBase = Inventory.MakeAttributeColumn(mcStats,"AttributeBase" + nRow,nDepth + 2,Inventory.ATTRIBUTE_BASE_RIGHT,nY,true);
++         var mcModifier = Inventory.MakeAttributeColumn(mcStats,"AttributeModifier" + nRow,nDepth + 3,Inventory.ATTRIBUTE_MODIFIER_RIGHT,nY,true);
++         mcLabel.SetText(Inventory.ShortLabel(CreatureUtils.LabelForProperty(aRows[nRow])));
++         mcStats.AttributeRows.push({property:aRows[nRow],total:mcTotal,base:mcBase,modifier:mcModifier});
++         nY = nY + Inventory.ATTRIBUTE_ROW_HEIGHT;
++         nRow = nRow + 1;
++      }
++      TokenManager.AddTokenObserverWithID(Inventory.ATTRIBUTE_OBSERVER_ID,"GUI.SelectedChar",function()
++      {
++         Inventory.UpdateAttributeRows();
++      }
++      );
++      Inventory.UpdateAttributeRows();
++   }
++   static function MakeAttributeColumn(a_mcParent, a_sName, a_nDepth, a_nX, a_nY, a_bRightAligned)
++   {
++      var mcField = a_mcParent.attachMovie(Inventory.ATTRIBUTE_SYMBOL,a_sName,a_nDepth);
++      mcField._x = a_bRightAligned ? a_nX - Inventory.ATTRIBUTE_FIELD_WIDTH : a_nX;
++      mcField._y = a_nY;
++      if(mcField.TextField == undefined)
++      {
++         return mcField;
++      }
++      mcField.TextField._width = a_bRightAligned ? Inventory.ATTRIBUTE_FIELD_WIDTH : Inventory.ATTRIBUTE_LABEL_WIDTH;
++      if(a_bRightAligned)
++      {
++         // Growing to the left keeps a common right edge, so a one digit bonus and
++         // a two digit one end in the same place.
++         mcField.TextField.autoSize = "right";
++      }
++      return mcField;
++   }
++   static function UpdateAttributeRows()
++   {
++      var mcStats = _root.Stats_mc;
++      if(mcStats == undefined || mcStats.AttributeRows == undefined)
++      {
++         return;
++      }
++      var nRow = 0;
++      while(nRow < mcStats.AttributeRows.length)
++      {
++         var oRow = mcStats.AttributeRows[nRow];
++         var sToken = "GUI.SelectedChar.Attributes." + oRow.property;
++         var nTotal = Number(ExternalCommands.GetValue(sToken + ".Total"));
++         var nBase = Number(ExternalCommands.GetValue(sToken + ".Base"));
++         var nModifier = Number(ExternalCommands.GetValue(sToken + ".Modifier"));
++         var sPrefix = "";
++         var sSuffix = "";
++         var sSign = "+";
++         if(nModifier < 0)
++         {
++            sPrefix = SharedLibrary.CoreStats.NegativeColorPrefix();
++            sSuffix = SharedLibrary.CoreStats.ColorSuffix();
++            sSign = "-";
++         }
++         else if(nModifier > 0)
++         {
++            sPrefix = SharedLibrary.CoreStats.PositiveColorPrefix();
++            sSuffix = SharedLibrary.CoreStats.ColorSuffix();
++         }
++         oRow.total.SetText(CreatureUtils.FormatPrecisionByProperty(nTotal,oRow.property));
++         oRow.base.SetText(CreatureUtils.FormatPrecisionByProperty(nBase,oRow.property));
++         oRow.modifier.SetText(sPrefix + sSign + Math.abs(nModifier) + sSuffix);
++         nRow = nRow + 1;
++      }
++   }
+    static function StartScene()
+    {
+       if(GUISystem.RunningInGame == false)
+@@ -55,6 +211,7 @@ class Inventory
+       }
+       Inventory.aCategoryNames = Array(Localization.Strings.LOC_CATEGORY_ALL,Localization.Strings.LOC_CATEGORY_WEAPONS,Localization.Strings.LOC_CATEGORY_ARMOR,Localization.Strings.LOC_CATEGORY_ACCESSORIES,Localization.Strings.LOC_CATEGORY_OTHER,Localization.Strings.LOC_CATEGORY_CRAFTING,Localization.Strings.LOC_CATEGORY_PLOT);
+       Inventory.SetupInitFunctions();
++      Inventory.AddAttributeRows();
+       ContextSystem.CreateContext("Inventory");
+       ContextSystem.CreateContext("PaperDoll");
+       ContextSystem.CreateContext("SelectInventoryItemForEquipSlot");

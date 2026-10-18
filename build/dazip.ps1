@@ -219,6 +219,7 @@ $movieFile = 'ui\levelup' + $(if ($Ftg) { '_ftg' } else { '' }) + $floorSuffix +
 $uiList = @(
     @{ Name = 'levelup';   File = $movieFile }
     @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+    @{ Name = 'inventory'; File = 'ui\inventory.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

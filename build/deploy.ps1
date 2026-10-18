@@ -288,6 +288,7 @@ else {
 $uiMovies = @(
     @{ Name = 'levelup';   File = $uiFile }
     @{ Name = 'portraits'; File = 'ui\portraits.swf' }
+    @{ Name = 'inventory'; File = 'ui\inventory.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

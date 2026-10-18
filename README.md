@@ -126,8 +126,9 @@ resources are mounted and one `AddInItem` can only carry one value:
    Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
-2. **UI**, extending `core`, which is where the UI movie resources live. One
-   movie is patched: `levelup` (the screen itself).
+2. **UI**, extending `core`, which is where the UI movie resources live. Two
+   movies are patched: `levelup` (the screen itself) and `inventory` (the
+   paperdoll's stat column).
 
 The movie ships with the game as a headerless SWF (`levelup.gfx`) inside the
 GUI packages. Its ActionScript tracks edits in
@@ -153,6 +154,50 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 
 Everything is scoped to `bLevelUp`, so character creation behaves exactly as
 vanilla.
+
+### The inventory paperdoll
+
+The inventory screen's left column lists only condition and combat stats —
+health, energy and fatigue above the paperdoll, armour, defence, attack and
+damage below it. The patched `inventory` movie puts the six attributes and the
+resistances in the gap between them, showing the same numbers as the character
+record:
+
+```
+Str   19  18   +1        Ment  17   0  +10
+Dext  24  19   +5        Phys  26   0  +10
+Will  11  10   +1        Fir   25   0  +25
+Mag   12  11   +1        Cold   0   0   +0
+Cunn  21  14   +7        Elec   0   0   +0
+Cons  19  13   +6        Nat    0   0   +0
+                         Spir  10   0  +10
+```
+
+Each row is **total, base, modifier**; the modifier is signed and coloured the
+way the character sheet colours it. The rows are instances of the movie's own
+`PaperDoll_stats_#Field` symbol, so they inherit the book font and formatting,
+one field per column so the numbers stay aligned even though they differ in
+width.
+
+Worth knowing:
+
+- Values come from `GUI.SelectedChar.Attributes.<property>.Total/.Base/.Modifier`,
+  where `<property>` is the `properties.2da` row id — 1..6 for the six
+  attributes, because row 0 of that table is unused.
+- The resistances are not a fixed list: the rows are taken from
+  `properties.2da` where `HASH_UIMAPPING` is 1 (Mental, Physical) or 3 (the five
+  elemental ones), which is how `CharacterRecord.UpdateResistances` finds them.
+- Labels are three letters, keeping a fourth when it is a consonant, so `Dext`,
+  `Will`, `Cunn` and `Cons` stay readable.
+- Resistances carry no `%`.
+
+**The layout numbers are constants, not measurements.** The retail rows sit at
+fixed positions in the movie (fatigue at y 53.3, the armour row at 340 with its
+icon's ink a few pixels higher), and `getBounds` does not work inside this movie
+— a runtime measurement silently does nothing, which looks like "the change had
+no effect". `ATTRIBUTE_ROW_TOP` and the column right-edges in `Inventory.as` were
+checked against screenshots of the real screen, so change them together with a
+look at the screen.
 
 ### Attribute ids, column names, and Cunning
 
@@ -340,8 +385,10 @@ src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
 ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's movie
+ui/movies/portraits/patches/*.patch  party-bar portrait indicator
+ui/movies/inventory/patches/*.patch  paperdoll attribute and resistance rows
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
-ui/build-all.ps1                    build all four movies
+ui/build-all.ps1                    build all four level-up movies plus portraits and inventory
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
 build/deploy.ps1                    build all four, package all four, install one
 build/dazip.ps1                     package (or install/uninstall) a single .dazip

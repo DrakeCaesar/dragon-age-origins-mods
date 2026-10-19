@@ -137,7 +137,9 @@ pane initialise, which is what makes existing picks uneditable. The patches in
 
 - owned abilities become clickable, and unlearnable
 - an existing specialization can be removed, refunding the specialization point
-- an ability cannot be unlearned while something owned still depends on it
+- an ability cannot be unlearned while something owned still depends on it,
+  including Combat Training ranks a talent or spell needs but does not name as
+  a prerequisite
 - an attribute cannot be lowered below a requirement an owned ability has
 - a specialization cannot be removed while a talent or spell it unlocks is
   still picked

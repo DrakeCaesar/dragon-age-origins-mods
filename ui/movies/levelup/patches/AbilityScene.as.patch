@@ -1,19 +1,33 @@
 ﻿diff --git a/scripts/__Packages/AbilityScene.as b/scripts/__Packages/AbilityScene.as
-index 97a3b58..54c9fdb 100644
+index 97a3b58..e48b0bc 100644
 --- a/scripts/__Packages/AbilityScene.as
 +++ b/scripts/__Packages/AbilityScene.as
-@@ -114,6 +114,10 @@ class AbilityScene
+@@ -67,7 +67,11 @@ class AbilityScene
+    }
+    static function SendAbilityChainsRequest(oClass)
+    {
+-      ExternalCommands.SendMessageArgs("GameModeController.FindAbilityChains",oClass.parentClass.CreatureID,oClass.nType,!oClass.bLevelUp ? SharedLibrary.Ability.DISPLAYMODE_CHARGEN : SharedLibrary.Ability.DISPLAYMODE_LEVELUP);
++      AbilityScene.SendAbilityChainsRequestForType(oClass,oClass.nType);
++   }
++   static function SendAbilityChainsRequestForType(oClass, a_nType)
++   {
++      ExternalCommands.SendMessageArgs("GameModeController.FindAbilityChains",oClass.parentClass.CreatureID,a_nType,!oClass.bLevelUp ? SharedLibrary.Ability.DISPLAYMODE_CHARGEN : SharedLibrary.Ability.DISPLAYMODE_LEVELUP);
+    }
+    static function SendSelectionMessage(oClass, a_ID, a_bRequestChainsUpdate)
+    {
+@@ -114,6 +118,11 @@ class AbilityScene
     }
     static function UnspendPoint(oClass, a_nID)
     {
 +      if(AbilityScene.IsPrereqOfOwned(oClass,a_nID))
 +      {
++         ExternalCommands.PlayGUISound(SoundEvents.ST_ERROR,"Click");
 +         return false;
 +      }
        var _loc4_ = true;
        var _loc5_ = -1;
        var _loc1_ = 0;
-@@ -134,13 +138,134 @@ class AbilityScene
+@@ -134,13 +143,153 @@ class AbilityScene
        {
           oClass.nPointsToSpend = oClass.nPointsToSpend + 1;
           AbilityScene.UpdatePointsToSpend(oClass);
@@ -51,7 +65,7 @@ index 97a3b58..54c9fdb 100644
 +   }
 +   static function IsPrereqOfOwned(oClass, a_nID)
 +   {
-+      if(AbilityScene.IsCombatTrainingPrereqOfOwned(a_nID))
++      if(AbilityScene.IsCombatTrainingPrereqOfOwned(oClass,a_nID))
 +      {
 +         return true;
 +      }
@@ -76,19 +90,21 @@ index 97a3b58..54c9fdb 100644
 +      }
 +      return false;
 +   }
-+   static function IsCombatTrainingPrereqOfOwned(a_nID)
++   static function IsCombatTrainingPrereqOfOwned(oClass, a_nID)
 +   {
-+      // Combat Training is a skill, but talents and spells do not name it in
-+      // prereqability. They carry a RequiresCombatTraining flag and the Rank
-+      // they need, so the prereqability scan in IsPrereqOfOwned cannot see
-+      // them and would happily refund a rank they still depend on.
++      // Combat Training is a skill, but the talents and spells that need it do
++      // not name it in prereqability. They carry a RequiresCombatTraining flag
++      // and the Rank they need, so the prereqability scan in IsPrereqOfOwned
++      // cannot see them and would happily refund a rank they still depend on.
 +      //
-+      // The four ranks are ABI ids 100100..100103; removing a_nID leaves
-+      // ranks below it, so the surviving rank is a_nID - 100100.
++      // The four ranks are ABI ids 100100..100103, so removing a_nID leaves the
++      // ranks up to a_nID - 100100; that is the same arithmetic the vanilla
++      // tooltip uses to name the rank a talent requires.
 +      if(a_nID < 100100 || a_nID > 100103)
 +      {
 +         return false;
 +      }
++      AbilityScene.RequestAllAbilityChains(oClass);
 +      var nRemaining = a_nID - 100100;
 +      var aBases = new Array("CharGenCreature.Stats.SkillChains","CharGenCreature.Stats.SpellChains","CharGenCreature.Stats.TalentChains");
 +      var _loc1_ = 0;
@@ -117,6 +133,23 @@ index 97a3b58..54c9fdb 100644
 +         _loc1_ = _loc1_ + 1;
 +      }
 +      return false;
++   }
++   static function RequestAllAbilityChains(oClass)
++   {
++      // A chains request only fills the list for the type it was sent for, and
++      // Combat Training is unlearned in the skills scene while the talents that
++      // depend on it live in the talents list. Without the other two requests
++      // the scan above reads an empty list and allows the refund.
++      var aTypes = new Array(CharGen.SKILLS,CharGen.SPELLS,CharGen.TALENTS);
++      var _loc1_ = 0;
++      while(_loc1_ < aTypes.length)
++      {
++         if(aTypes[_loc1_] != oClass.nType)
++         {
++            AbilityScene.SendAbilityChainsRequestForType(oClass,aTypes[_loc1_]);
++         }
++         _loc1_ = _loc1_ + 1;
++      }
 +   }
 +   static function RestoreUnlearned(oClass)
 +   {

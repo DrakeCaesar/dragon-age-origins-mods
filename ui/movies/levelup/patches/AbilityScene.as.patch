@@ -1,5 +1,5 @@
 ﻿diff --git a/scripts/__Packages/AbilityScene.as b/scripts/__Packages/AbilityScene.as
-index 97a3b58..e48b0bc 100644
+index 97a3b58..223f0ad 100644
 --- a/scripts/__Packages/AbilityScene.as
 +++ b/scripts/__Packages/AbilityScene.as
 @@ -67,7 +67,11 @@ class AbilityScene
@@ -15,19 +15,18 @@ index 97a3b58..e48b0bc 100644
     }
     static function SendSelectionMessage(oClass, a_ID, a_bRequestChainsUpdate)
     {
-@@ -114,6 +118,11 @@ class AbilityScene
+@@ -114,6 +118,10 @@ class AbilityScene
     }
     static function UnspendPoint(oClass, a_nID)
     {
 +      if(AbilityScene.IsPrereqOfOwned(oClass,a_nID))
 +      {
-+         ExternalCommands.PlayGUISound(SoundEvents.ST_ERROR,"Click");
 +         return false;
 +      }
        var _loc4_ = true;
        var _loc5_ = -1;
        var _loc1_ = 0;
-@@ -134,13 +143,153 @@ class AbilityScene
+@@ -134,13 +142,153 @@ class AbilityScene
        {
           oClass.nPointsToSpend = oClass.nPointsToSpend + 1;
           AbilityScene.UpdatePointsToSpend(oClass);

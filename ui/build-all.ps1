@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Builds every level-up movie variant: one movie base times two attribute
-    floors, plus the two single-build movies.
+    Builds every level-up movie variant: two movie bases times two attribute
+    floors, four movies in all.
 
 .DESCRIPTION
     The variants exist because the attribute floor is a behavioural choice
@@ -10,8 +10,9 @@
 
         ui\levelup.swf          vanilla base, start-value floor
         ui\levelup_ten.swf      vanilla base, flat 10 floor
+        ui\levelup_ftg.swf      FtG base,     start-value floor
+        ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
         ui\portraits.swf        party-bar portraits, no variants
-        ui\inventory.swf        paperdoll stat rows, no variants
 
     Each variant is the same patch set with UseStartingValueFloor flipped at
     build time, so the four cannot drift apart. A variant is skipped when its
@@ -33,8 +34,10 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvoca
 $build = Join-Path $here 'build-movie.ps1'
 
 $variants = @(
-    @{ Movie = 'levelup';     Floor = 'Starting'; Label = 'starting-value floor' }
-    @{ Movie = 'levelup';     Floor = 'Ten';      Label = 'flat 10 floor' }
+    @{ Movie = 'levelup';     Floor = 'Starting'; Label = 'vanilla base, starting-value floor' }
+    @{ Movie = 'levelup';     Floor = 'Ten';      Label = 'vanilla base, flat 10 floor' }
+    @{ Movie = 'levelup_ftg'; Floor = 'Starting'; Label = 'FtG base, starting-value floor' }
+    @{ Movie = 'levelup_ftg'; Floor = 'Ten';      Label = 'FtG base, flat 10 floor' }
 )
 
 $failed = @()
@@ -85,30 +88,6 @@ if (Test-Path -LiteralPath $portraitBase) {
 }
 else {
     Write-Host "Skip    : portraits -- $portraitBase is missing"
-    Write-Host ""
-}
-
-# The inventory movie is a single build for the same reason: the attributes it
-# adds are read from the character at runtime, not baked in.
-$inventoryBase = Join-Path $here 'movies\inventory\vanilla.swf'
-if (Test-Path -LiteralPath $inventoryBase) {
-    Write-Host "-- inventory"
-    $args = @('-NoProfile', '-File', $build, '-Movie', 'inventory', '-Java', $Java)
-    if ($FfdecJar) { $args += @('-FfdecJar', $FfdecJar) }
-    $prevEap = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & powershell @args 2>&1 | ForEach-Object {
-            if ($_ -match '^(Built|Verify|Patch|Import|Base)') { Write-Host "  $_" }
-        }
-    } finally {
-        $ErrorActionPreference = $prevEap
-    }
-    if ($LASTEXITCODE -ne 0) { $failed += 'inventory' }
-    Write-Host ""
-}
-else {
-    Write-Host "Skip    : inventory -- $inventoryBase is missing"
     Write-Host ""
 }
 

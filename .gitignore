@@ -1,4 +1,4 @@
-﻿# ---------------------------------------------------------------- build output
+# ---------------------------------------------------------------- build output
 # Everything here is regenerable from src\ + ui\movies\*\patches\ (+ the game install).
 build/stage/
 build/*.dazip
@@ -6,8 +6,9 @@ build/dist/
 src/*.ncs
 ui/levelup.swf
 ui/levelup_ten.swf
+ui/levelup_ftg.swf
+ui/levelup_ftg_ten.swf
 ui/portraits.swf
-ui/inventory.swf
 
 # ------------------------------------------------- third-party, NOT ours
 # BioWare: extracted game resources and decompiled ActionScript.
@@ -27,7 +28,6 @@ ref/ui/
 ui/movies/*/_base/
 ui/movies/*/_work/
 ui/movies/*/_build/
-ui/movies/*/_import/
 ui/_export_check/
 ui/_pristine/
 ui/_verify/

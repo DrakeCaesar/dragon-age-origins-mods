@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Rebuilds a patched UI movie from its pinned base export plus its patches.
 
@@ -98,6 +98,25 @@ $checks = @{
             'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')
         }
     }
+    # Same edits, layered onto FtG UI Mod's level-up movie instead of vanilla.
+    # Its LevelUp.as is restructured, so the guard uses its own variable name,
+    # and InitBookMenu proves the build really is based on their movie.
+    'levelup_ftg' = @{
+        expected = @{
+            'scripts\__Packages\AbilityScene.as'                  = @('RevertPoints', 'RestoreUnlearned', 'IsPrereqOfOwned', 'IsCombatTrainingPrereqOfOwned')
+            'scripts\__Packages\AttributesScene.as'               = @('SeedExistingAllocations', 'AttributeFloor', 'ClassAttributeBonus', 'AdjustFromTable', 'AdjustColumnFor', 'StrAdjust', 'IntAdjust', 'ConAdjust', 'Get2DAValueByColumnName', 'IsAttributeRequiredAbove', 'LevelUp.RevertAllChanges()', 'if(_loc1_ - 1 < AttributesScene.AttributeFloor(nID))')
+            'scripts\__Packages\AttributeAdjuster.as'             = @('CanRemovePoint')
+            'scripts\__Packages\SkillsScene.as'                   = @('aUnlearnedPoints', 'nInitialPoints', 'SkillsScene.bLevelUp')
+            'scripts\__Packages\SpellsTalentsScene.as'            = @('aUnlearnedPoints', 'nInitialPoints', 'nSpellChains + nTalentChains == 0')
+            'scripts\__Packages\LevelUp.as'                       = @('aUnlearnedSpecs', 'RestoreUnlearnedSpecs', 'HasAbilityRequiringSpec', 'Number(_loc2_) != 0', 'InitBookMenu')
+            'scripts\__Packages\SharedLibrary\BookAbilityIcon.as' = @('bLevelUp')
+        }
+        forbidden = @{
+            'scripts\__Packages\ClassButton.as' = @('IsNewSpecialization')
+            'scripts\__Packages\AttributesScene.as' = @('nID == 1 || nID == 2', 'nID == 5 || nID == 6')   # see above
+            'scripts\__Packages\LevelUp.as'     = @('RSP8', 'RSP10')   # see above
+        }
+    }
     # The party-bar portrait: its level-up indicator is always on screen, and only
     # animates while the creature really has a point to spend. Frame 29 is the one
     # where the icon art is fully opaque; the earlier frames are transparent.
@@ -182,35 +201,6 @@ if ($checks.ContainsKey($Movie)) {
     Write-Warning "No verification checks defined for movie '$Movie'."
 }
 
-# ------------------------------------------- 3b. import only the changed scripts
-# FFDec recompiles every script it is given, so importing the whole tree replaces
-# BioWare's bytecode for code we never meant to touch. Importing only the scripts
-# that differ from the pinned base leaves the rest of the movie exactly as shipped.
-$importDir = Join-Path $movieDir '_import'
-if (Test-Path -LiteralPath $importDir) { Remove-Item -Recurse -Force $importDir }
-$importScripts = Join-Path $importDir 'scripts'
-$baseScripts = Join-Path $baseExport 'scripts'
-$stageScripts = Join-Path $stage 'scripts'
-$changedScripts = @()
-foreach ($file in Get-ChildItem $baseScripts -Recurse -File -Filter '*.as') {
-    $rel = $file.FullName.Substring($baseScripts.Length + 1)
-    $stagePath = Join-Path $stageScripts $rel
-    if (-not (Test-Path -LiteralPath $stagePath)) { continue }
-    if ((Get-FileHash $file.FullName).Hash -eq (Get-FileHash $stagePath).Hash) { continue }
-    $dest = Join-Path $importScripts $rel
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
-    Copy-Item -LiteralPath $stagePath -Destination $dest -Force
-    $changedScripts += ($rel -replace '\\', '/')
-}
-if ($changedScripts.Count -eq 0) {
-    Write-Host "Import  : no changed scripts, copying the vanilla movie"
-    Copy-Item -LiteralPath $vanilla -Destination $Out -Force
-    Write-Host ""
-    Write-Host "Built   : $Out  ($((Get-Item -LiteralPath $Out).Length) bytes)"
-    return
-}
-Write-Host ("Import  : {0} changed script(s): {1}" -f $changedScripts.Count, ($changedScripts -join ', '))
-
 # ---------------------------------------------------------------- 4. import
 Write-Host "Import  : $vanilla + patched scripts -> $Out"
 # FFDec is a Java program and writes warnings to stderr; with the default
@@ -219,7 +209,7 @@ Write-Host "Import  : $vanilla + patched scripts -> $Out"
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
 try {
-    & $Java -jar $FfdecJar -importScript $vanilla $Out $importDir 2>&1 | Select-Object -Last 1
+    & $Java -jar $FfdecJar -importScript $vanilla $Out $stage 2>&1 | Select-Object -Last 1
 } finally {
     $ErrorActionPreference = $prevEap
 }

@@ -113,7 +113,10 @@ def build_xrefs(pe, limit_lo=None, limit_hi=None):
                     val = op.imm & 0xFFFFFFFF
                 elif op.type == CS_OP_MEM:
                     m = op.mem
-                    if m.base == 0 and m.index == 0:
+                    # Indexed forms such as [eax*4 + 0xbf22cc] still name a global
+                    # in the displacement, and those are exactly the table lookups
+                    # that matter. Only a base register makes the address dynamic.
+                    if m.base == 0:
                         val = m.disp & 0xFFFFFFFF
                 if val is not None and lo <= val < hi:
                     xr.setdefault(val, []).append((ins.address, f"{ins.mnemonic} {ins.op_str}"))

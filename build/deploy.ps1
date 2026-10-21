@@ -126,6 +126,11 @@ if ($NoPackage) {
         $out = Join-Path $dir $v.Dazip
 
         $dazipArgs = @('-NoProfile', '-File', $dazipScript, '-Out', $out, '-AttributeFloor', $v.Floor)
+        if ($Ncs) {
+            # Without this the packaging step re-detects the script itself and fails
+            # whenever no Toolset export exists, even though -Ncs already named one.
+            $dazipArgs += @('-Ncs', $Ncs)
+        }
         & powershell @dazipArgs 2>&1 | ForEach-Object {
             if ($_ -match '^(Dazip|UI|Script)') { Write-Host "          $($_)" }
         }

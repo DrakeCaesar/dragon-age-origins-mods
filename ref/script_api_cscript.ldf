@@ -1,0 +1,2027 @@
+////////////////////////////////////////////////////////
+//
+//  CScript
+//
+//  Language definition file for the client-side
+//  scripting language.
+//
+//  (c) BioWare Corp, 2007
+//
+////////////////////////////////////////////////////////
+
+#define ENGINE_NUM_STRUCTURES   6
+#define ENGINE_STRUCTURE_0  event
+#define ENGINE_STRUCTURE_1  location
+#define ENGINE_STRUCTURE_2  command
+#define ENGINE_STRUCTURE_3  effect
+#define ENGINE_STRUCTURE_4  itemproperty
+#define ENGINE_STRUCTURE_5  player
+
+#define WAITING_ALLOWED
+
+#define SOURCE_FILE_EXTENSION   nsc
+#define COMPILED_FILE_EXTENSION ncc
+#define DEBUGGER_FILE_EXTENSION ndc
+
+//////////////////////////////////////////////////////////////////
+// Constants
+//////////////////////////////////////////////////////////////////
+
+int TRUE	= 1;
+int FALSE	= 0;
+
+int ANIM_EVENT_ATTACK_IMPACT	= 1;
+int ANIM_EVENT_DONE		= 13;
+
+// LOG_CHANNEL
+int LOG_CHANNEL_GENERAL = 0;
+int LOG_CHANNEL_SNIFFTEST = 1;
+int LOG_CHANNEL_QA        = 2;
+int LOG_CHANNEL_QA_REGRESSION = 3;
+int LOG_CHANNEL_TEMP      = 500;
+
+// Ability
+int ABILITY_INVALID = 0;
+
+// List of defined properties  (defined in Properties.xls)
+int PROPERTY_INVALID			=	0	;
+int PROPERTY_ATTRIBUTE_STRENGTH		=	1	;
+int PROPERTY_ATTRIBUTE_DEXTERITY	=	2	;
+int PROPERTY_ATTRIBUTE_WILLPOWER	=	3	;
+int PROPERTY_ATTRIBUTE_MAGIC		=	4	;
+int PROPERTY_ATTRIBUTE_INTELLIGENCE	=	5	;
+int PROPERTY_ATTRIBUTE_CONSTITUTION	=	6	;
+int PROPERTY_DEPLETABLE_HEALTH		=	7	;
+int PROPERTY_DEPLETABLE_MANA_STAMINA	=	8	;
+int PROPERTY_DERIVED_ATTACK		=	9	;
+int PROPERTY_DERIVED_DEFENSE		=	10	;
+int PROPERTY_DERIVED_ARMOR		=	11	;
+int PROPERTY_DERIVED_AP			=	12	;
+int PROPERTY_DERIVED_SPELLPOWER		=	13	;
+int PROPERTY_SIMPLE_REGENERATION_HEALTH	=	14	;
+int PROPERTY_SIMPLE_LEVEL		=	15	;
+int PROPERTY_ATTRIBUTE_SHIELD_RATING 	= 	16	;
+int PROPERTY_SIMPLE_INVENTORY_SIZE	=	17	;
+int PROPERTY_SIMPLE_AGE			=	18	;
+int PROPERTY_SIMPLE_EXPERIENCE		=	19	;
+
+int PROPERTY_SIMPLE_MOVEMENT_SPEED_MODIFIER	=	20	;
+int PROPERTY_ATTRIBUTE_MELEE_CRIT_MODIFIER  	= 	21	;
+int PROPERTY_ATTRIBUTE_MAGIC_CRIT_MODIFIER  	=	22	;
+int PROPERTY_ATTRIBUTE_RANGED_CRIT_MODIFIER 	= 	23	;
+int PROPERTY_ATTRIBUTE_RANGED_AIM_SPEED 	= 	24	;
+
+// Property Values
+int PROPERTY_VALUE_TOTAL = 1;
+int PROPERTY_VALUE_BASE = 2;
+int PROPERTY_VALUE_CURRENT = 3;
+int PROPERTY_VALUE_MODIFIER = 4;
+
+// Property types
+int PROPERTY_TYPE_INVALID = 0;
+int PROPERTY_TYPE_ATTRIBUTE = 1;
+int PROPERTY_TYPE_SIMPLE  = 2;
+int PROPERTY_TYPE_DEPLETABLE = 3;
+int PROPERTY_TYPE_DERIVED  = 4;
+
+// Room Visibility
+
+int ROOM_VISIBILITY_HIDDEN = 0;
+int ROOM_VISIBILITY_FOGGED = 2;
+int ROOM_VISIBILITY_VISIBLE = 1;
+
+// GetItemsOptions
+int GET_ITEMS_OPTION_ALL      = 1;
+int GET_ITEMS_OPTION_BACKPACK = 0;
+int GET_ITEMS_OPTION_EQUIPPED = 2;
+
+// Inventory slots - These numbers should align with those in inventoryslots.h
+int INVENTORY_SLOT_INVALID          = 255;
+int INVENTORY_SLOT_MAIN             =   0;
+int INVENTORY_SLOT_OFFHAND  	    =   1;
+int INVENTORY_SLOT_AMMO             =   2;
+//UNUSED: 3
+int INVENTORY_SLOT_CHEST            =	4;
+int INVENTORY_SLOT_HEAD             =	5;
+int INVENTORY_SLOT_BOOTS            =	6;
+int INVENTORY_SLOT_GLOVES           =   7;
+int INVENTORY_SLOT_CLOAK            =	8;
+int INVENTORY_SLOT_RING1            =	9;
+int INVENTORY_SLOT_RING2            =	10;
+int INVENTORY_SLOT_NECK             =	11;
+int INVENTORY_SLOT_BELT             =	12;
+int INVENTORY_SLOT_BITE	            =	13;
+int INVENTORY_SLOT_SHALE_SHOULDERS  =   14;
+int INVENTORY_SLOT_SHALE_CHEST      =   15;
+int INVENTORY_SLOT_SHALE_RIGHTARM   =   16;
+int INVENTORY_SLOT_SHALE_LEFTARM    =   17;
+int INVENTORY_SLOT_DOG_WARPAINT     =   18;
+int INVENTORY_SLOT_DOG_COLLAR       =   19;
+
+int EQUIPMENT_NUM_SLOTS     	=	20 ; // max number of above slot flags.
+
+// Effect Types
+int EFFECT_DURATION_TYPE_INVALID = 0;
+int EFFECT_DURATION_TYPE_INSTANT = 1;
+int EFFECT_DURATION_TYPE_TEMPORARY = 2;
+int EFFECT_DURATION_TYPE_PERMANENT = 3;
+int EFFECT_DURATION_TYPE_DEATH = 6;
+
+//Effect Flags
+int EFFECT_FLAG_DISABLE_MOVEMENT = 1;
+int EFFECT_FLAG_DISABLE_TURNING = 2;
+int EFFECT_FLAG_DISABLE_COMBAT = 4;
+int EFFECT_FLAG_DISABLE_TALENTS = 8;
+int EFFECT_FLAG_DISABLE_SPELLS = 16;
+int EFFECT_FLAG_DISABLE_SKILLS = 32;
+int EFFECT_FLAG_DISABLE_ITEMS = 64;
+int EFFECT_FLAG_DISABLE_INPUT = 128;
+
+int EFFECT_TYPE_INVALID = 0;
+
+// Object types
+int OBJECT_TYPE_INVALID           = 0;
+int OBJECT_TYPE_GUI               = 1;
+int OBJECT_TYPE_TILE              = 2;
+int OBJECT_TYPE_MODULE            = 4;
+int OBJECT_TYPE_AREA              = 8;
+int OBJECT_TYPE_STORE             = 16;
+int OBJECT_TYPE_CREATURE          = 32;
+int OBJECT_TYPE_ITEM              = 64;
+int OBJECT_TYPE_TRIGGER           = 128;
+int OBJECT_TYPE_PROJECTILE        = 256;
+int OBJECT_TYPE_PLACEABLE         = 512;
+int OBJECT_TYPE_AREAOFEFFECTOBJECT= 2048;
+int OBJECT_TYPE_WAYPOINT          = 4096;
+int OBJECT_TYPE_SOUND             = 16384;
+int OBJECT_TYPE_PARTY             = 32768;
+int OBJECT_TYPE_MAPPATCH          = 65536;
+int OBJECT_TYPE_VFX               = 131072;
+int OBJECT_TYPE_MAP               = 262144;
+int OBJECT_TYPE_ALL               = 4294967295;
+
+
+int INVALID_WEAPON_SET	= 4294967295;
+
+//////////////////////////////////////////////////////////////////
+// Automation
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Executes given console command.
+*
+* @param sCommand - String to be interpreted as a command
+* @author Noel Borstad
+*/
+string	ConsoleCommand(string sCommand) = 0;
+
+/** @brief 
+*
+*Returns TRUE if an area and player controled party exist. 
+*
+* @author Noel Borstad
+*/
+int	IsCampaignLoaded() = 1;
+
+/** @brief 
+*
+*Shuts down engine and returns to main menu. 
+*
+* @author Noel Borstad 
+*/
+void	ShutDown() = 2;
+
+/** @brief 
+*
+*Will either exit to main menu or out of the game completely.
+*
+* @param nToMainMenuOnly - Set as 1 to exit to main menu, 0 to exit the game
+* @author Noel Borstad
+*/
+void	Exit(int nToMainMenuOnly, int nExitCode = 0) = 20;
+
+/** @brief 
+*
+*Possibly deprecated.
+*
+* @param fTime
+* @author Noel Borstad
+*/
+void	SetWaitTimeout(float fTime) = 10;
+
+/** @brief 
+*
+*Returns the current area name.
+*
+* @author Sam Johnson 
+*/
+string  GetAreaName() = 48;
+
+/** @brief 
+*
+*Returns TRUE if the palyer character is in dialog.
+*
+* @author Sam Johnson 
+*/
+int	IsInDialog() = 50;
+
+/** @brief 
+*
+*Used to determine the result of the WaitUnit() call, will return FALSE if the WaitUntil()
+*call timeout is exceeded.
+*
+* @author Mark Brockington 
+*/
+int     GetWaitUntilResult() = 54;
+
+/** @brief 
+*
+*Returns the number of milliseconds since the machine has booted.
+*
+* @author Mike Wellman
+*/
+int     GetTime() = 68;
+
+/** @brief 
+*
+*Returns true if the current area that is loaded or being loaded has finished
+*
+* @author Ross Gardner
+*/
+int     GetIsLevelLoaded() = 72;
+
+/** @brief
+*
+*Sends TPM Messages via Skynet - should only be called via wrappers in ctest_h
+*
+* @author Sam Johnson
+*/ 
+void	SendTPMMessage(string sMessage) = 93;
+
+//////////////////////////////////////////////////////////////////
+// Basic Types
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Defines a variable of type Vector.
+*
+* @param x - Float value of x, default is 0.0f
+* @param y - Float value of y, default is 0.0f
+* @param z - Float value of z, default is 0.0f
+* @author Noel Borstad 
+*/
+vector	Vector(float x=0.0f, float y=0.0f, float z=0.0f) = 4;
+
+/** @brief 
+*
+*Converts a vector type to a string.
+*
+* @param vVector - Vector type to convert to string
+* @author Sam Johnson
+*/
+string  VectorToString(vector vVector) = 49;
+
+/** @brief 
+*
+*Converts and integer value to a float.
+*
+* @param nValue - Integer value
+* @author Sam Johnson
+*/
+float	IntToFloat(int nValue) = 38;
+
+/** @brief 
+*
+*Converts an integer value to a string.
+*
+* @param nInteger - Integer value
+* @author Noel Borstad
+*/
+string	IntToString(int nInteger) = 27;
+
+/** @brief 
+*
+*Converts a float value to an integer.
+*
+* @param fValue - Float value
+* @author Sam Johnson
+*/
+int	FloatToInt(float fValue) = 39;
+
+/** @brief 
+*
+*Converts a float value to a string.
+*
+* @param fValue - Float value
+* @param nWidth - Output string width
+* @param nDecimals - Number of decimals
+* @author Sam Johnson
+*/
+string FloatToString(float fValue, int nWidth, int nDecimals) = 61;
+
+/** @brief 
+*
+*Converts string data to an integer value.
+*
+* @param sCommand - String data
+* @author Paul Roffel
+*/
+int	StringToInt(string sCommand) = 21;
+
+/** @brief 
+*
+*Returns integer denoting number of elements in the given array.
+*
+* @param array - Any array
+* @author Sam Johnson
+*/
+int	GetArraySize(any array) = 62;
+
+/** @brief 
+*
+*Generates a random number.
+*
+* @param nMaxInteger - Max integer value of random outcome.
+* @author Brenon Holmes - and copy-pasted by Sam
+*/
+int	Random( int nMaxInteger ) = 63;
+
+/** @brief 
+*
+*Returns the square root of a given float value.
+*
+* @param fValue - Float value
+* @author Sam Johnson
+*/
+float	Sqrt( float fValue ) = 65;
+
+/** @brief Retrieves a local integer variable stored on an object.
+*
+* Returns the value of the integer variable with the name sVarName which is stored
+* on the object oObject. If no such variable is stored on the object oObject, 0 is
+* returned. To change the value of a local integer value, use SetLocalInt().
+*
+* @param oObject - The Object the variable is stored on.
+* @param sVarName - The name of the integer variable to retrieve.
+* @returns Returns the value of the integer variable. Returns 0 on error.
+* @sa SetLocalInt()
+* @author Jon Cooper
+*/
+int GetLocalInt( object oObject, string sVarName ) = 89;
+
+/** @brief Stores a local integer variable on an object.
+*
+* Sets the value of the local integer variable with the name sVarName on the object
+* oObject to the integer value nValue. If no variable with that name is currently stored
+* on the object oObject, the variable is created.
+*
+* @param oObject - Object to store the var on.
+* @param sVarName - The name of the integer variable to store.
+* @param nValue - The value of the integer to store.
+* @sa GetLocalInt()
+* @author Jon Cooper
+*/
+void SetLocalInt( object oObject, string sVarName, int nValue ) = 90;
+
+/** @brief Gets a local floating point variable off of an object.
+*
+* Gets a local floating point variable sVarName on the specified
+* object.
+*
+* @param oObject - Object to get the var on.
+* @param sVarName - The name of the floating point variable to retrieve.
+* @returns Returns the floating point variable, returns 0.0f on error.
+* @sa SetLocalFloat()
+* @author Jon Cooper
+*/
+float GetLocalFloat( object oObject, string sVarName ) = 91;
+
+/** @brief Sets a local floating point variable on an object.
+*
+* Sets a local floating point variable sVarName on the specified
+* object.
+*
+* @param oObject - Object to set the variable on.
+* @param sVarName - The name of the floating point variable to set.
+* @param fValue - The value of the variable to set.
+* @sa GetLocalFloat()
+* @author Jon Cooper
+*/
+void SetLocalFloat( object oObject, string sVarName, float fValue ) = 92;
+
+/** @brief Gets a local string variable on an object.
+*
+* Gets a local string variable sVarName on the specified
+* object.
+*
+* @param oObject - Object to get the variable from.
+* @param sVarName - The name of the string variable to retrieve.
+* @returns Returns the string variable, returns an empty string on error.
+* @sa SetLocalString()
+* @author Jon Cooper
+*/
+string GetLocalString( object oObject, string sVarName ) = 87;
+
+/** @brief Sets a local string variable on an object.
+*
+* Sets a local string variable sVarName on the specified
+* object.
+*
+* @param oObject - Object to set the variable on.
+* @param sVarName - The name of the string variable to set.
+* @param sValue - The value of the string variable.
+* @sa GetLocalString()
+* @author Jon Cooper
+*/
+void SetLocalString( object oObject, string sVarName, string sValue ) = 88;
+
+//////////////////////////////////////////////////////////////////
+// String Manipulation
+//////////////////////////////////////////////////////////////////
+/** @brief 
+*
+*Returns integer denoting number of characters in a string.
+*
+* @param sString - String data
+* @author Sam Johnson
+*/
+int	GetStringLength(string sString) = 51;
+
+/** @brief 
+*
+*Parses a string from a given index and counter to return a substring.
+*
+* @param sString - String data to parse. Case sensitive.
+* @param nStart - Character number, index, from which to begin parsing
+* @param nCount - The number of characters from start point to include in substring
+* @author Sam Johnson
+*/
+string	SubString(string sString, int nStart, int nCount) = 52;
+
+//////////////////////////////////////////////////////////////////
+// Output
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Script interface to the eclips probe system.  Talk to Sam before using this command.
+*
+* @param sOutput - String data to output
+* @author Sam Johnson
+* @author Sam Johnson
+*/
+void Probe(string sOutput, float fValue = 0) = 37;
+
+/** @brief 
+*
+*Will display a string message in the Log Window.
+*
+* @param sMessage - String data to output
+* @author Henry Smith
+*/
+void PrintToLogWindow(string sMessage) = 41;
+
+/** @brief 
+*
+*Output string data to the console through the debug channel.
+*
+* @param sOutput - String data to output
+* @author Noel Borstad
+*/
+void PrintToConsole(string sOutput) = 28;
+
+/** @brief 
+*
+*Fires an assertion if a given test value is 0 and will display a string error message.
+*
+* @param nTestValue - Test value, must be 0 or 1
+* @param sErrormessage - String error message to output
+* @author Noel Borstad
+*/
+void Assert(int nTestValue, string sErrorMessage) = 9;
+
+/** @brief 
+*
+*Writes an output string to log file using nLogChannel = 0.
+*
+* @param sOutput - String data to output
+* @author Noel Borstad
+*/
+void PrintToLog(string sOutput, int nLogChannel = 0) = 8;
+
+/** @brief 
+*
+*Writes an output string to log file using nLogChannel = 0 and echos the output to the screen
+*
+* @param sOutput - String data to output
+* @param nLogChannel
+* @author Noel Borstad
+*/
+void PrintToScreen( string sOutput, int nLogChannel = 0 ) = 19;
+
+//////////////////////////////////////////////////////////////////
+// Tokens
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Evaluates the token that is passed in and if it is valid returns the token value as an integer.  Otherwise it returns -1;
+*
+* @param sToken - Token to resolve
+* @author Ross Gardner
+*/
+int	GetIntToken(string sToken) = 29;
+
+/** @brief 
+*
+*Evaluates the token that is passed in and if it is valid returns the token value as a float.  Otherwise it returns -1;
+*
+* @param sToken - Token to resolve
+* @author Ross Gardner
+*/
+float	GetFloatToken(string sToken) = 30;
+
+/** @brief 
+*
+*Evaluates the token that is passed in and if it is valid returns the token value as a string.  Returns "" if token did not exist;
+*
+* @param sToken - Token to resolve
+* @author Ross Gardner
+*/
+string	GetStringToken(string sToken) = 31;
+
+/** @brief 
+*
+*Evaluates the token passed in and if it is valid then it sets it to the value of the integer passed in.  Returns 1 if the token attribute was set, 0 if it could not resolve it.
+*
+* @param sToken - Token who's attribute is to be set
+* @param nValue - Integer value to set to token attribute
+* @author Ross Gardner
+*/
+int	SetIntToken(string sToken, int nValue) = 32;
+
+/** @brief 
+*
+*Evaluates the token passed in and if it is valid then it sets the token to the float value passed in.  Returns 1 if the token attribute was set, 0 if it could not resolve it.
+*
+* @param sToken - Token who's attribute is to be set
+* @param fValue - Float value to set to token attribute
+* @author Ross Gardner
+*/
+int	SetFloatToken(string sToken, float fValue) = 33;
+
+/** @brief 
+*
+*Evaluates the token passed in and if it exists then it sets it to the string passed in.  Returns 1 if the token attribute was set, 0 if it could not resolve it.
+*
+* @param sToken - Token who's attribute is to be set
+* @param sString - String data to set to token attribute
+* @author Ross Gardner
+*/
+int	SetStringToken(string sToken, string sString) = 34;
+
+//////////////////////////////////////////////////////////////////
+// Animation
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Returns the length, in seconds, of an animation.
+*
+* @param sAnimation - Animation to get its length
+* @author Jose Ilitzky
+*/
+float GetAnimationLength(string sAnimation) = 45;
+
+/** @brief 
+*
+*Returns the event time, in seconds, for the specified animation.
+*
+* @param sAnimation - Animation 
+* @param nAnimEventId - Animation event ID
+* @author Jose Ilitzky
+*/
+float GetAnimationEventTime(string sAnimation, int nAnimEventId) = 46;
+
+//////////////////////////////////////////////////////////////////
+// Actions
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Command the player character to attack a target object.
+*
+* @param o - Target object to attack
+* @author Noel Borstad, Jose Ilitzky
+*/
+void	PerformAttack(object o) = 22;
+
+/** @brief 
+*
+*Command the player character to execute a given ability.  
+*
+* @param oCharacter - Player character object
+* @param nAbilityId - Ability indentifier value
+* @param oTarget - Target object, default is no object (OBJECT_INVALID)
+* @param vTarget - Target vector, default is [0.0, 0.0, 0.0]
+* @author Noel Borstad
+*/
+void	PerformAbility(object oCharacter, int nAbilityId, object oTarget=OBJECT_INVALID, vector vTarget=[0.0,0.0,0.0]) = 26;
+
+/** @brief 
+*
+*Command player character to initiate dialog with a given object.
+*
+* @param o - Object with which to initiate dialog
+* @author Gabriel Moreno-Fortuny
+*/
+void	PerformDialog(object o, string sDlgName = "") = 40;
+
+/** @brief 
+*
+*Give target object's loot to the party.
+*
+* @param oObject - Target object to loot
+* @author Mike Wellman
+*/
+void	PerformLootObject(object oObject) = 77;
+
+/** @brief 
+*
+*Command character to use target object.
+*
+* @param o - Character object that will use target object
+* @param t - Target object
+* @author Noel Borstad
+*/
+void	PerformUseObject(object o, object t) = 18;
+
+/** @brief 
+*
+*Command the player character to move to a given vector position.
+*
+* @param vPos - Vector position
+* @author Noel Borstad
+*/
+void	PerformWalkTo( vector vPos ) = 3;
+
+/** @brief 
+*
+*Sends a dialog reply, nLine, to the client to simulate a dialog response in a conversation.
+*
+* @param nLine - Response simulation, this value is 0-based thus: response 1 == nLine 0
+* @author None Specified
+*/
+int	SendDialogReply(int nLine) = 42;
+
+/** @brief 
+*
+* Returns the Active WeaponSet on the active creature, 1 or 0
+*
+* @author Sam Johnson
+*/
+int GetActiveWeaponSet() = 75;
+
+/** @brief
+*
+* Switches the WeaponSet on the active Creature
+* @param nWeaponSet - Switch to the specified WeaponSet (0 or 1)
+* @author Sam Johnson
+*/
+void SwitchWeaponSet( int nWeaponSet = INVALID_WEAPON_SET ) = 76;
+
+//////////////////////////////////////////////////////////////////
+// Object Related
+//////////////////////////////////////////////////////////////////
+
+/** @brief Returns the nth specified object with the appropriate tag
+*
+* Returns the nth specified object with the appropriate tag
+*
+* @param sTag - The tag reference to get the object by
+* @param nNth - If there are multiple objects with the same tag, get the 'nth' specified object.
+* @returns the desired object or OBJECT_INVALID on failure
+* @author Brenon
+*/
+object	GetObjectByTag(string sTag, int nNth = 0) = 15;
+
+/** @brief 
+*
+*Returns a float value designating the distance between two objects.
+*
+* @param oObjectA - Any object
+* @param oObjectB - Any object
+* @author Noel Borstad
+*/
+float	GetDistanceBetweenObjects(object oObjectA, object oObjectB) = 16;
+
+/** @brief 
+*
+*Returns the current health of a given object.
+*
+* @param o - An object
+* @author Noel Borstad
+*/
+int	GetCurrentHealth(object o) = 23;
+
+/** @brief 
+*
+*Return armour rating of given object.
+*
+* @param o - An object
+* @author Noel Borstad
+*/
+int	GetArmour(object o) = 24;
+
+/** @brief 
+*
+*Returns TRUE if the given object is dead.
+*
+* @param o - An object
+* @author Noel Borstad
+*/
+int	GetIsDead(object o) = 25;
+
+/** @brief Gets the item in a creature's equip slot. Returns invalid object if no such object, slot, or weapon set exists.
+*
+* @param nSlot - the equip slot to be examined
+* @param oCreature - the creature to examine
+* @param nWeaponSet - the weapon set
+* @author Dave Schaefer
+*/
+object	GetItemInEquipSlot(int nSlot, object oCreature=OBJECT_SELF, int nWeaponSet = 0) = 7;
+
+/** @brief 
+*
+*Returns TRUE if given object is valid.
+*
+* @param o - An object
+* @author Noel Borstad
+*/
+int	GetIsObjectValid(object o) = 13;
+
+
+/** @brief Returns the orientation of the object.
+*
+* Returns the orientation of the object in vector format.
+*
+* @param oTarget - Object to get the orientation from.
+* @returns Returns a vector representing the orientation of the target object. Returns an empty vector on error.
+* @sa SetOrientation(), SetFacing(), GetFacing(), SetFacingPosition(), SetFacingObject()
+* @author Jon Cooper
+*/
+vector GetOrientation( object oTarget ) = 108;
+
+
+/** @brief Sets the orientation of the target object.
+*
+* Sets the orientation of the target object.
+*
+* @param oTarget - Object to set the orientation for.
+* @param vOrientation - Vector orientation to set for the object.
+* @remarks If the target object is invalid or does not have an orientation then the function
+* will fail.
+* @sa GetOrientation(), SetFacing(), GetFacing(), SetFacingPosition(), SetFacingObject()
+* @author Jon Cooper
+*/
+void SetOrientation( object oTarget, vector vOrientation ) = 107;
+
+
+/** @brief Returns the position of an object.
+*
+* Returns a position vector containting the xyz coordinates of the object oTarget.
+*
+* @param oTarget - The Object to get the position of.
+* @return Returns a vector containing the position of the specified object. Returns an empty vector on error.
+* @sa SetPosition()
+* @author Jon Cooper
+*/
+vector GetPosition( object oTarget ) = 14;
+
+
+/** @brief Sets the position of an object.
+*
+* Sets the position of the object oObject to the xyz coordinates contained in the vector
+* vPosition. If bSafePosition is set to TRUE, then a safe position will be computed based
+* off of the vector vPosition and this position will be used. A safe position is a valid
+* position on the nearest walkable mesh.
+*
+* @param oObject - The Object to set the position of.
+* @param vPosition - The position vector containing the new coordinates.
+* @param bSafePosition - Specifies whether a safe position should be calculated and used.
+* @remarks If an invalid object is specified then the function will fail.
+* @remarks If a non-creature object is specified, a safe position can not be computed
+* for the object so vPosition will be used, regardless of whether or not it is safe.
+* @remarks If a safe position cannot be found and the bSafePosition flag is set to TRUE,
+* the function will fail.
+* @sa GetPosition()
+* @author Jon Cooper
+*/
+void SetPosition( object oObject, vector vPosition, int bSafePosition = TRUE ) = 109;
+
+
+/** @brief 
+*
+*Get the current animation of a given object.
+*
+* @param o - An object
+* @author Noel Borstad
+*/
+int	GetCurrentAnimation(object o) = 17;
+
+/** @brief 
+*
+*Equip the designated item object to the designated creature object, in the given item slot.
+*
+* @param oidCharacter - Creature object 
+* @param oidItem - Item object
+* @param nSlot - Integer value representing slot
+* @author Noel Borstad
+*/
+void	EquipItem(object oidCharacter, object oidItem, int nSlot) = 5;
+
+/** @brief 
+*
+*Unequip the designated item object.  THIS COMMAND IS NOT CURRENTLY IMPLEMENTED.
+*
+* @param oidItem - Item object to unequip
+* @author Noel Borstad
+*/
+void	UnequipItem(object oidItem) = 6;
+
+/** @brief 
+*
+*Command target object to play given animation.
+*
+* @param oObject - Target object
+* @param nAnimation - Animation to play
+* @author Jose Ilitzky
+*/
+void	PlayFireAndForgetAnimation(object oObject, int nAnimation) = 44;
+
+/** @brief 
+*
+*Set an animation state on an object.
+*
+* @param oObject - Object to state animation state
+* @param nAnimation - Animation state value to set
+* @author Jose Ilitzky
+*/
+void	SetAnimation(object oObject, int nAnimation) = 43;
+
+/** @brief 
+*
+*Toggles combat state of given object.  
+*
+* @param oObject - Object to set combat state
+* @param bState - State, accepts either TRUE or FALSE
+* @author Jose Ilitzky
+*/
+void	SetCombatState(object oObject, int bState) = 47;
+
+/** @brief 
+*
+*Returns the combat state of the object. Will return TRUE for enabled and FALSE for disabled.
+*
+* @param oObject - Object to check combat state
+* @author Sam Johnson
+*/
+int	GetCombatState(object oObject) = 53;
+
+/** @brief 
+*
+*Returns the given object's current visibility state. Note that deactivating an object does not change its visiblity state - visibility is always calculated as though the object were active.
+*
+* @param oObject - An object
+* @author Sam Johnson
+*/
+int	GetIsVisible(object oObject) = 64;
+
+/** @brief 
+*
+*Return room ID that target object is in. Returns -1 on error or invalid room.
+*
+* @param oObject - Target object
+* @author Sam Johnson
+*/
+int	GetRoomID(object oObject) = 66;
+
+/** @brief 
+*
+*Returns visibility state of the given room. 1 is visible,  0 is NOT visible, -1 is error.
+*
+* @param nRoomID - Room ID of room to check
+* @author Sam Johnson
+*/
+
+int 	GetRoomVisibility(int nRoomID) = 67;
+void	LoadWaypoints() = 69;
+
+/** @brief 
+*
+*Returns the object's tag. Invalid objects return an empty string.
+*
+* @param oObject - any valid object.
+* @author Sam Johnson
+*/
+string	GetObjectTag(object oObject) = 70;			
+
+
+int     IsHostileToPlayer(object oObject) = 71;	
+
+/** @brief Returns the list of effects that are currently applied to an object.
+*
+*    Returns the list of effects that are currently applied to an object. This includes both
+*    temporary and permanent effects. The order of the events inside the list is meaningless.
+*
+* @param oObject - The object from which we try to get the effects list.
+* @param nEffectType - Optionally only return an array of a specified EffectType. Default setting returns all applied effects.
+* @param nAbilityId - Optionally filter the returned array to include only effects with a matching ability id (0 means no filter).
+* @param nEffectId - Optionally filter the array by EffectId (-1 means no filter).
+* @param nDurationType - Optionally filter the array by DurationType (EFFECT_DURATION_TYPE_INVALID means no filter).
+* @author Jon Cooper
+*/
+effect[] GetEffects(object oObject, int nEffectType = EFFECT_TYPE_INVALID, int nAbilityId = 0, object oCreator = OBJECT_INVALID, int nDurationType = EFFECT_DURATION_TYPE_INVALID, int nEffectId = -1) = 73;
+
+
+/** @brief
+ *
+ * Returns whether an effects is on the object, as filtered by filtering parameters
+ *
+ * @param oObject - the object to get the effects for
+ * @param nEffectType - the type of effects to return
+ * @param nAbilityID - the ability ID of effects to return
+ * @param oCreator - the creator of the effects to return
+ * @param nDurationType - the type of duration of the effects to return
+ * @param nEffectID - the effect ID of the effects to return
+ * @author Mike W
+ */
+//effect[] GetHasEffect(object oObject, int nEffectType, int nAbilityID, object oCreator, int nDurationType, int nEffectID) = 74;
+
+
+/** @brief Enables or disables an object in the engine, both server and client
+*
+* Each game engine object has a boolean enabled or disabled flag in the engine.
+  In a "disabled" state, the object will not appear on the client visually, and
+  will receive no AI updates. GameEffects will remain on the object but all commands
+  will be cleared upon disabling. 
+*
+* @param oObject - The object to set status on 
+* @param nActive - Non-zero is active, zero is inactive
+* @param nAnimation - The ID of an appear/disappear animation to play
+* @param nVFX - The ID of a VFX to add while the animation is playing
+* @author Jon Cooper
+*/
+void SetObjectActive(object oObject, int nActive, int nAnimation = 0, int nVFX = 0) = 95;
+
+
+/** @brief Queries the active status of an object
+*
+* Each game engine object has a boolean enabled or disabled flag in the engine. 
+  In a "disabled" state, the object will not appear on the client visually, and
+  will receive no AI updates. Messages will continue to queue up so you are
+  able to assign actions before enabling the object. 
+*
+* @param oObject - The object query status on 
+* @returns non-zero if active, zero if inactive
+* @author Jon Cooper
+*/
+int GetObjectActive(object oObject) = 94;
+
+
+/** @brief Gets the module object id
+*
+* Gets the module object id
+*
+* @returns module object id
+* @author Jon Cooper
+*/
+object GetModule() = 84;
+
+
+/** @brief Returns an array of hostile creatures
+*
+* Returns an array of hostile creatures
+*
+* @param oCreature - Creature to test against
+* @param obHostile - Filter to only retrieve hostile creatures.
+* @author Jon Cooper
+*/
+object[] GetPerceivedCreatureList( object oCreature, int bHostile = 0 ) = 96;
+
+
+/** @brief Returns if CreatureA perceives CreatureB
+*
+* Returns true if CreatureB exists on CreatureA's perception list. This is a cheap check
+* against the perception list, it does not perform expensive line of sight checking.
+*
+* Note: Returns FALSE if A or B are not creatures or invalid.
+*
+* @param oidA - Creature who is perceiving
+* @param oidB - Creature who is being perceived (or not)
+* @author Jon Cooper
+*/
+int IsPerceiving(object oidA, object oidB) = 106;
+
+
+/** @brief Delete all entries in the perception list of a creature
+*
+* @param oPerceiver - The creature for which the perception list will be reset
+* @author Jon Cooper
+*/
+void ClearPerceptionList(object oPerceiver) = 105;
+
+
+/** @brief Get the specified attribute from oCreature
+*
+* Get oCreature's Property value.
+* Property types have slightly different definitions of each of the 4 value types.
+* A SIMPLE or DERIVED property has a BASE and TOTAL value as the same number and 
+* doesnt have CURRENT or MODIFIER.
+* An ATTRIBUTE property has a BASE value and a MODIFIER value. Its TOTAL value 
+* is the clamped (between its min and max) sum of the BASE plues the MODIFIER.
+* A DEPLETABLE property is similar to an ATTRIBUTE property but in addition has
+* a CURRENT value, which must be between the property min and the TOTAL value.
+* Properties are defined in Properties.xls.
+*
+* @param oCreature - the creature whose stat is being requested
+* @param nProperty - the property (stat) we want to know about
+* @param nValueType - the type of value of the property we want to know about (TOTAL, BASE, CURRENT, MODIFIER)
+* @returns Returns oCreature's Attribute Value
+* @author Jon Cooper
+*/
+float GetCreatureProperty( object oCreature, int nProperty, int nValueType = PROPERTY_VALUE_TOTAL ) = 97;
+
+
+/** @brief Set the specified value of a given property on a oCreature
+*
+* Sets the specified value of the selected property on a creature. 
+* Doesnt work for TOTAL values. Use BASE instead. See GetCreatureProperty for more details
+*
+* @param oCreature - the creature whose property we want to set.
+* @param nProperty - the property (stat) we want to modify.
+* @param nValueType - the type of value of the property we want to modify (BASE, CURRENT, MODIFIER)
+* @returns Returns oCreature's Attribute Value
+* @author Jon Cooper
+*/
+void SetCreatureProperty( object oCreature, int nProperty, float fNewValue, int nValueType = PROPERTY_VALUE_BASE) = 98;
+
+
+/** @brief Returns the position of a substring within a string.
+*
+* Returns the starting index of the first occurence of the substring sSubstring within the string sString
+* beginning at position nStart. Returns -1 if the string sSubstring does not occur in the string sString
+* after position nStart. The result is 0 indexed, meaning this function will return 0 if the substring 
+* occurs at the very beginning of the string.
+*
+* @param sString - The string to search.
+* @param sSubString - The substring to search for.
+* @param nStart - The position to start the search from.
+* @returns Returns the position of the substring, returns -1 on error.
+* @author Jon Cooper
+*/
+int FindSubString( string sString, string sSubString, int nStart = 0) = 83;
+
+
+/** @brief Converts a string to uppercase.
+*
+* Returns a string that is exactly the same as sString except all letters are converted to upper case.
+*
+* @param sString - The string to convert to upper case.
+* @returns Returns the string converted to uppercase. Returns an empty string on error.
+* @author Jon Cooper
+*/
+string StringUpperCase( string sString ) = 85;
+
+
+/** @brief Converts a string to lowercase.
+*
+* Returns a string that is exactly the same as sString except all letters are converted to lower case.
+*
+* @param sString - The string to convert.
+* @returns Returns the string converted to lowercase, returns an empty string on error.
+* @author Jon Cooper
+*/
+string StringLowerCase( string sString ) = 86;
+
+
+/** @brief Returns the resref of the specified object
+*
+* Returns the resref of the specified object
+*
+* @param oObject - the object to get the resref off of
+* @returns the resref of the object or an empty string on failure.
+* @author Jon Cooper
+*/
+string GetResRef( object oObject ) = 111;
+
+
+/** @brief This function gets the combat target of a creature 
+*
+* This function gets the combat target of a creature. This target is set when using an attack or 
+* ability command and is cleared (to target invalid) when combat state is set to false.
+*
+* @param oCreature - the creature whose combat target we are querying
+* @returns the id of the creature's target. Will be invalid if the creature has no target.
+* @sa GetAttackTarget
+* @author Jon Cooper
+*/
+object GetAttackTarget(object oCreature) = 112;
+
+
+//////////////////////////////////////////////////////////////////
+// Player
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Returns integer denoting the amount of members in the player's party.
+*
+* @author Sophia Smith
+*/
+int	GetPartySize() = 35;
+
+/** @brief 
+*
+*Returns the currently selected character object.
+*
+* @author Noel Borstad
+*/
+object	GetSelectedCharacter(int nChar = 0) = 11;
+
+/** @brief 
+*
+*Returns the currently controlled character object.
+*
+* @author Noel Borstad
+*/
+object	GetControlledCharacer(int nChar = 0) = 12;
+
+//////////////////////////////////////////////////////////////////
+// 2DAs
+//////////////////////////////////////////////////////////////////
+
+/** @brief 
+*
+*Returns a resource from a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @param sColumn - String referencing a column of the 2DA XLS file
+* @param nRow - Integer value referencing a row of the 2DA XLS file
+* @author Sam Johnson
+*/
+resource    Get2DAResource( int n2DA, string sColumn, int nRow) = 55;
+
+/** @brief 
+*
+*Returns a string data from a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @param sColumn - String referencing a column of the 2DA XLS file
+* @param nRow - Integer value referencing a row of the 2DA XLS file
+* @author Sam Johnson
+*/
+string	Get2DAString( int n2DA, string sColumn, int nRow) = 56;
+
+/** @brief 
+*
+*Returns an integer value from a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @param sColumn - String referencing a column of the 2DA XLS file
+* @param nRow - Integer value referencing a row of the 2DA XLS file
+* @author Sam Johnson
+*/
+int	Get2DAInt( int n2DA, string sColumn, int nRow) = 57;
+
+/** @brief 
+*
+*Returns a float value from a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @param sColumn - String referencing a column of the 2DA XLS file
+* @param nRow - Integer value referencing a row of the 2DA XLS file
+* @author Sam Johnson
+*/
+float	Get2DAFloat( int n2DA, string sColumn, int nRow) = 58;
+
+/** @brief 
+*
+*Returns the number of rows in a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @author Sam Johnson
+*/
+int	Get2DARows(int n2DA) = 59;
+
+/** @brief 
+*
+*Returns the number of columns in a 2DA XLS file.
+*
+* @param n2DA - Constant referencing the desired 2DA XLS file
+* @author Sam Johnson
+*/
+int	Get2DAColumns(int n2DA) = 60;
+
+
+/** @brief Returns a value from a 2DA in string format.
+*
+* Returns a 2DA string based on the specified Row and Column values.
+*
+* @param n2DA - The 2DA to access
+* @param sColumn - The name of the column to access
+* @param nRow - The 0 based index of the row to access
+* @param s2da - (optional) if n2da is -1 and this is a valid resource, it will retrieve
+*       the 2da based on the name instead of the index. Note that this should be avoided
+*       when possible.  
+* @return Returns the string specified by the parameters. Returns an empty string on error.
+* @author Jon Cooper
+*/
+string GetM2DAString( int n2DA, string sColumn, int nRow, string s2DA = "" ) = 99;
+
+
+/** @brief Returns a resource from a 2DA.
+*
+* Returns a 2DA resource on the specified Row and Column values.
+*
+* @param n2DA - The 2DA to access
+* @param sColumn - The name of the column to access
+* @param nRow - The 0 based index of the row to access
+* @param s2da - (optional) if n2da is -1 and this is a valid resource, it will retrieve
+*       the 2da based on the name instead of the index. Note that this should be avoided
+*       when possible.  
+
+* @return Returns a resource specified by the parameters. 
+* @author Jon Cooper
+*/
+resource GetM2DAResource( int n2DA, string sColumn, int nRow, string s2da = ""  ) = 100;
+
+
+/** @brief Returns a 2DA value in integer format.
+*
+* Returns a 2DA integer based on the specified Row and Column values.
+*
+* @param n2DA - The 2DA to access
+* @param sColumn - The name of the column to access
+* @param nRow - The 0 based index of the row to access
+* @param s2da - (optional) if n2da is -1 and this is a valid resource, it will retrieve
+*       the 2da based on the name instead of the index. Note that this should be avoided
+*       when possible.  
+* @return Returns the int specified by the parameters. Returns 0.
+* @sa Set2DAInt()
+* @author Jon Cooper
+*/
+int GetM2DAInt( int n2DA, string sColumn, int nRow, string s2da = "" ) = 101;
+
+
+/** @brief Returns a 2DA value in float format.
+*
+* Returns a 2DA integer based on the specified Row and Column values.
+*
+* @param n2DA - The 2DA to access
+* @param sColumn - The name of the column to access
+* @param nRow - The 0 based index of the row to access
+* @param s2da - (optional) if n2da is -1 and this is a valid resource, it will retrieve
+*       the 2da based on the name instead of the index. Note that this should be avoided
+*       when possible.  
+* @return Returns the float specified by the parameters. 
+* @author Jon Cooper
+*/
+float GetM2DAFloat(int n2DA, string sColumn, int nRow, string s2DA = "") =  102;
+
+
+/** @brief Returns the number of rows in the specified 2da.
+*
+* Returns the number of rows in the specified 2da.
+*
+* @param n2DA - The 2DA to access.
+* @param s2da - (optional) if n2da is -1 and this is a valid resource, it will retrieve
+*       the 2da based on the name instead of the index. Note that this should be avoided
+*       when possible.  
+* @returns Returns the number of rows in the 2DA, returns 0 on error.
+* @author Jon Cooper
+*/
+int GetM2DARows( int n2DA, string s2DA = "" ) = 103;
+
+
+/** @brief Returns the number of columns in the specified 2da.
+*
+* Returns the number of columns in the specified 2da.
+*
+* @param n2DA - The 2DA to access.
+* @returns Returns the number of columns in the 2DA, returns 0 on error.
+* @sa Get2DARows()
+* @author Jon Cooper
+*/
+int GetM2DAColumns( int n2DA ) = 104;
+
+//////////////////////////////////////////////////////////////////
+// GUIs
+//////////////////////////////////////////////////////////////////
+
+/** @brief
+*
+* Prints the entire movieclip hierarchy (starting at _root) of the
+* given movie.
+*
+* @param sMovieName - The name of the movie to print the hierarchy of.
+* @author Henry Smith
+*/
+void GUIPrintHierarchy(string sMovieName) = 78;
+
+/** @brief
+*
+* Finds an element (movieclip) in the given movie by name or path.
+* If the name has a dot in it, it is assumed to be a path.
+*
+* @param sMovieName - The name of the movie to search in.
+* @param sElementNameOrPath - The name or path of the element to find.
+* @author Henry Smith
+*/
+int GUIFindElement(string sMovieName, string sElementNameOrPath) = 79;
+
+/** @brief
+*
+* Calls an ActionScript function in the given movie.
+*
+* @param sMovieName - The movie to call the function in.
+* @param sElementNameOrPath - The element name or path to call the function on.
+* @param sFunctionName - Name of the function to call.
+* @author Henry Smith
+*/
+void GUICallFunction(string sMovieName, string sElementNameOrPath, string sFunctionName) = 80;
+
+/** @brief Gets all items in an object inventory
+*
+* Provides access to a creature's or placeable's inventory and equipped items.
+*
+* @param oObject        - A creature or placeable with an inventory
+* @param nGetItemOptions  - A GET_ITEMS_* constant. THIS IS NOT A BITFIELD!
+* @param nBaseItemType      - Return only items with base item type matching. 0 to disable this filter. (find types in \tag\main\data\Source\2DA\rules\BITM_base.xls)
+* @param sFilterTag     - Return only items with a matching tag. "" to disable this filter.
+*
+* @author Dave Schaefer
+*/
+object[] GetItemsInInventory( object oObject, int nGetItemsOptions = GET_ITEMS_OPTION_ALL, int nBaseItemType = 0, string sTagFilter = "") =  81;
+
+/** @brief Converts an object to a string.
+*
+* Returns the unique ID number of the object oObject in string form.
+*
+* @param oObject - The object to convert.
+* @returns Returns the string representation of the object. Returns an empty string on error.
+* @author Brenon
+*/
+string ObjectToString( object oObject ) = 82;
+
+/** @brief Returns the name of the currently executing script
+*
+* Returns the name of the currently executing script for debugging purposes.
+*
+* @return string with the name of the current script.
+* @author Jon Cooper
+*/
+string GetCurrentScriptName() = 110;
+
+
+/** @brief This function returns the size of an object command queue, note that the currently active command doesn't belong in the queue.
+*
+* This function returns the size of an object command queue, note that the currently active command doesn't belong in the queue.
+*
+*   @param oObject - returns the size of this objects command queue
+*   @returns int
+*   @author Jon Cooper
+*/
+int GetCommandQueueSize(object oObject) = 113;
+
+
+/** @brief This function adds the specified command to the object.
+*
+* This function adds the specified command to the object command queue. 
+* The command can be added to the back of the queue or to the front, and can also be
+* flagged as static (must-finish command).
+*
+* @param oObject - the object to add the specified command
+* @param cCommand - the command to add to the object
+* @param bAddToFront - specifies if the command should be added to the front of the queue or not
+* @param bStatic - whether or not the command will be added as a static command. Static commands are flagged in a special manner and cannot be removed via regular clearing functionality. An override must specifically be specified to remove static commands. As such, commands should only be specified as static if they absolutely must finish.
+* @param nOverrideAddBehavior - replace the default add behavior by specifying a new behavior here
+* @returns TRUE on success, FALSE on failure
+* @remarks Any duplicate commands in the queue that are adjacent to one another are deleted.
+* @author Jon Cooper
+*/
+int AddCommand( object oObject, command cCommand, int bAddToFront = FALSE, int bStatic = FALSE, int nOverrideAddBehavior = -1 ) = 114;
+
+
+/** @brief This function is a move to object command constructor. The object executing the command will only use the position and disregard the target object orientation.
+*
+* This function is a move to object command constructor.
+* It creates a move to object command which can then be added to any
+* object's command queue. This command, when processed will attempt to
+* move the creature to target object.
+*
+* @param oTarget - the object the command should move the creature to
+* @param bRunToLocation - specifies whether the object should run or not
+* @param fMinRange - The closest to the object we can be
+* @param bUseOriginalPosition - Even if the target is moving, use the original position
+* @returns a valid command
+* @remarks Only creatures can move, non-creature objects that have a move command assigned to them will fail the command when attempting to process it.
+* @author Jon Cooper
+*/
+command CommandMoveToObject( object oTarget, int bRunToLocation = TRUE, float fMinRange = 0.0f, int bUseOriginalPosition = FALSE ) = 115;
+
+
+/** @brief Returns a random float.
+*
+* Returns a random floating point value between 0.0 and 1.0.
+*
+* @returns Returns a floating point value between 0.0 and 1.0.
+* @author Jon Cooper
+*/
+float RandomFloat() = 116;
+
+
+/** @brief Determines if a string is empty.
+*
+* Returns TRUE if the string sString is an empty string.
+*
+* @param sString - The string which may be empty.
+* @returns Returns TRUE if the string is an empty string, FALSE otherwise.
+* @author Jon Cooper
+*/
+int IsStringEmpty( string sString ) = 117;
+
+
+/** @brief Gets the weapon style used by a creature
+*
+* @param oCreature - the creature whose weapon style we are querying
+* @returns the weapon style (0 - none, 1 - single (with or without shield), 2 - dual, 3 - two handed)
+* @sa GetWeaponStyle
+* @author Jon Cooper
+*/
+int GetWeaponStyle(object oCreature) = 118;
+
+
+/** @brief Modify creature's Stealth state
+*
+* @param oCreature - oid of creature we want to modify
+* @param nEnabled - true or false
+* @author Jon Cooper
+**/
+void SetStealthEnabled(object oCreature, int nEnabled) = 119;
+
+
+/** @brief Returns creature's stealth state
+*
+* @param oCreature - oid of creature of interest
+* @author Jon Cooper
+**/
+int GetStealthEnabled(object oCreature) = 127;
+
+
+/** @brief Sets the tag of the object to the specified value.
+*
+* Sets the tag of the object to the specified value.
+*
+* @param oObject - the object to set the tag on
+* @param sTag - the tag to set the object
+* @author Jon Cooper
+*/
+void SetObjectTag( object oObject, string sTag ) = 120;
+
+
+/** @brief Sets the state for a specified placeable object.
+*
+* Sets the state for this placeable, but only if the state is a valid one
+* for the placeable itself as defined by the state controller. The placeable states are defined in the placeables.xls file in override.
+*
+* @param oPlaceable - The placeable to set the state on
+* @param nState - The state to set on the placeable
+* @sa GetPlaceableState()
+* @author Jon Cooper
+*/
+void SetPlaceableState( object oPlaceable, int nState ) = 121;
+
+
+/** @brief Gets the state of the specified placeable object.
+*
+* Returns the current state of a specified placeable object. The state
+* will be a valid state defined by the state controller for the
+* specified placeable. The placeable states are defined in the placeables.xls file in override.
+*
+* @param oPlaceable - The placeable to get the state of
+* @returns Returns the state of the placeable object
+* @sa SetPlaceableState()
+* @author Jon Cooper
+*/
+int GetPlaceableState( object oPlaceable ) = 126;
+
+
+/** @brief Determines if an object is in a trigger.
+*
+* Returns TRUE if the object oObject is within the trigger oTrigger, otherwise returns FALSE.
+*
+* @param oObject - The object which may be within the trigger.
+* @param oTrigger - The trigger the object may be within.
+* @returns TRUE if the object oObject is in the trigger oTrigger.
+* @author Jon Cooper
+*/
+int InTrigger( object oObject, object oTrigger ) = 122;
+
+
+/** @brief Determines if there is a line of sight between two objects.
+*
+* Returns TRUE if there is a clear line of sight between object oSource and object oTarget, otherwise returns FALSE.
+* If the line is occluded by geometry then the function will return FALSE. If the two objects are not in the same
+* area or if either object is invalid this function will return FALSE.
+*
+* @param oSource - The first object.
+* @param oTarget - The second object.
+* @returns Returns TRUE if there is a clear line of sight between the two objects. Returns FALSE if there is not.
+* @remarks It should be noted that the function is somewhat expensive and should not be called in an inner loop of your script.
+* @sa CheckLineOfSightVector()
+* @author Jon Cooper
+*/
+int CheckLineOfSightObject( object oSource, object oTarget ) = 123;
+
+
+
+/** @brief Adds the specified ability to oCreature
+*
+* Give oCreature the specified ability
+*
+* @param oCreature - the creature
+* @param nAbilityID - the ability identifier
+* @author Jon Cooper
+*/
+void AddAbility( object oObject, int nAbility, int bSendNotification = FALSE ) = 124;
+
+
+/** @brief Determine whether oCreature has nAbilityID in their list of abilities
+*
+* Determine whether oCreature has nAbilityID in their list of abilities
+*
+* @param oCreature - the creature 
+* @param nAbilityID - the ability identifier
+* @returns Returns TRUE if oCreature has the specified ability
+* @author Jon Cooper
+*/
+int GetHasAbility( object oObject, int nAbility ) = 125;
+
+
+/** @brief Returns the ID of an effect. 
+*
+*    Returns the internal unique ID of an effect. 
+*
+* @param eEffect    - The effect
+* @author Jon Cooper
+*/
+int GetEffectID(effect eEffect) = 128;
+
+
+/** @brief Is this effect valid?
+*
+* Tests to see if an effect is valid
+* 
+* @param eEffect - the effect to be tested
+* @author Jon Cooper
+*/
+int IsEffectValid(effect eEffect) = 129;
+
+
+/** @brief Get the remaining time for an ability to be used
+*
+* @param oCreature - owner of the ability
+* @param nAbilityId - ability to check the cooldown
+* @param sSourceItemTag - if an item ability, specify the specific item providing the ability.  If an empty string, the engine will grab the first item with this ability, this may not be the desired intention if the player has several items with the same ability.
+* @returns 0.0f if the ability is ready to be used again
+* @sa SetCooldown
+* @author Jon Cooper
+*/
+float GetRemainingCooldown(object oCreature, int nAbilityId, string sSourceItemTag = "") = 130;
+
+
+/** @brief Returns the the gore level of a creature as a float between 0 and 1
+*
+*
+* @author Jon Cooper
+*/
+float GetCreatureGoreLevel( object oCreature ) = 131;
+
+
+/** @brief Converts a string to a floating point number.
+*
+* Converts a string to a floating point number.
+*
+* @param sNumber - The string to convert.
+* @returns Returns the floating point value in the specified string.
+* @sa FloatToString(), StringToInt(), StringToVector()
+* @author Jon Cooper
+*/
+float StringToFloat( string sNumber ) = 132;
+
+
+/** @brief Returns the hero player
+*
+*
+* @author Jon Cooper
+*/
+object GetHero() = 133;
+
+
+/** @brief 
+*
+*Returns an object reference for the area oObject is in.
+*
+* @param oObject - Target object
+* @author Jon Cooper
+*/
+object GetArea( object oObject ) = 134;
+
+
+/** @brief Sets an object to be unable to drop below 1 health
+*
+* NOTE: This is the engine function, you should not use it. Use cwrapper_h.SetImmortal intead
+*
+* @param oObject - The object to set the visibilty for.
+* @param bImmortal - The state to set.
+* @author Jon Cooper
+*/
+void Engine_SetImmortal( object oObject, int bImmortal ) = 135;
+
+
+/** @brief Returns the cosine of an angle.
+*
+* Returns the cosine of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The cosine of the angle in radians.
+* @sa sin(), tan(), acos(), asin(), atan()
+* @author Jon Cooper
+*/
+float cos( float fValue ) = 136;
+
+/** @brief Returns the sine of an angle.
+*
+* Returns the sine of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The sine of the angle in radians.
+* @sa cos(), tan(), acos(), asin(), atan()
+* @author Jon Cooper
+*/
+float sin( float fValue ) = 137;
+
+/** @brief Returns the tangent of an angle.
+*
+* Returns the tangent of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The tangent of the angle in radians.
+* @sa cos(), sin(), acos(), asin(), atan()
+* @author Jon Cooper
+*/
+float tan( float fValue ) = 138;
+
+/** @brief Returns the arccosine of an angle.
+*
+* Returns the arccosine of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The arccosine of the angle in radians.
+* @sa cos(), sin(), tan(), asin(), atan()
+* @author Jon Cooper
+*/
+float acos( float fValue ) = 139;
+
+/** @brief Returns the arcsine of an angle.
+*
+* Returns the arcsine of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The arcsine of the angle in radians.
+* @sa cos(), sin(), tan(), acos(), atan()
+* @author Jon Cooper
+*/
+float asin( float fValue ) = 140;
+
+/** @brief Returns the arctangent of an angle.
+*
+* Returns the arctangent of the float fValue. fValue is an angle in radians.
+*
+* @param fValue - The angle in radians.
+* @returns The arctangent of the angle in radians.
+* @sa cos(), sin(), tan(), acos(), asin()
+* @author Jon Cooper
+*/
+float atan( float fValue ) = 141;
+
+
+/** @brief Returns the party list for the creature
+*
+*
+* @param oObject - The object to test for returning the party
+* @author Jon Cooper
+*/
+object[] GetPartyList(object oCreature=-1) = 142;
+
+
+/** @brief Gets the material type of an item
+*
+* returns the material type of an item
+*
+* @param oItem - An Item Object
+* @author Jon Cooper
+*/
+int GetItemMaterialType( object oItem) =  143;
+
+
+/** @brief Moves the entire party into an area
+*
+* This function will do an area transtion if the target area is within the same area 
+* list of the current area OR if the target area is in a different area list then
+* it will unload the current area list and load into memory (with a loading bar)
+* a new area list. The party will then be jumped to the specified waypoint (if it exists)
+*
+* @param sArea - tag of the target area
+* @param sWaypointTag - tag of the target waypoint
+* @returns 1 for success, 0 for failure (area list does not exist or area does not exist)
+* @remarks this function will jump ALL party members
+* @author Jon Cooper
+*/
+int DoAreaTransition( string sArea, string sWaypointTag ) = 144;
+
+
+/** @brief Shows the Item upgrade GUI
+* @author Jon Cooper
+*/
+void OpenItemUpgradeGUI() = 145;
+
+
+/** @brief Get the treasure rank.
+*
+* @param oPlaceable - The placeable.
+* @author Jon Cooper
+*/
+int GetPlaceableTreasureRank(object oPlaceable) = 146;
+
+
+/** @brief Returns the rank of a creature 
+*
+* Returns the CreatureRank of a creature, representing its relative combat difficulty.
+*
+* @param oCreature - The creature
+* @returns The CREATURE_RANK_* constant associated with the creature.
+* @author Jon Cooper
+*/
+int GetCreatureRank (object oCreature) = 147;
+
+
+/** @brief Get amount of money a creature or placeable posseses
+*
+* Gets amount of money a creature or placeable posseses
+*
+* @param oTarget - the target creature or placeable
+* @author Jon Cooper
+*/
+int GetMoney (object oTarget=OBJECT_SELF) = 148;
+
+
+/** @brief Returns N nearest object of a specific type, with a specifc tag
+*
+* Returns N nearest object of a specific type, with a specifc tag
+*
+* @param * oObject - target Object
+* @param * nObjectType - type for the objects to query for their distance
+* @param * sTag - Tag for the objects to query
+* @param * nNumberOfObjects (optional) - Number of objects to return
+* @param * nCheckLiving (optional) - only returns objects if they are alive
+* @param * nCheckPerceived (optional) - only returns objects if they are within the perception radius.
+* @author Jon Cooper
+*/
+object[] GetNearestObjectByTag( object oObject, string sTag, int nObjectType = OBJECT_TYPE_ALL, int nNumberOfObjects = 1, int nCheckLiving = 0, int nCheckPerceived = 0, int nIncludeSelf = 0 ) = 149;
+
+
+/** @brief Returns N nearest objects of a specific type
+*
+* Returns N nearest object of a specific type
+*
+* @param * oObject - target Object
+* @param * nObjectType - type for the objects to query for their distance
+* @param * nNumberOfObjects (optional) - Number of objects to return
+* @param * nCheckLiving (optional) - only returns objects if they are alive
+* @param * nCheckPerceived (optional) - only returns objects if they are within the perception radius.
+* @author Jon Cooper
+*/
+object[] GetNearestObject( object oObject, int nObjectType = OBJECT_TYPE_ALL, int nNumberOfObjects = 1, int nCheckLiving = 0, int nCheckPerceived = 0, int nIncludeSelf = 0) = 150;
+
+
+/** @brief Returns N nearest object of a specific type, with a specifc Group Id
+*
+* Returns N nearest object of a specific type, with a specifc Group Id
+*
+* @param * oObject - target Object
+* @param * nObjectType - type for the objects to query for their distance
+* @param * nGroupId - Group Id for the objects to query
+* @param * nNumberOfObjects (optional) - Number of objects to return
+* @param * nCheckLiving (optional) - only returns objects if they are alive
+* @param * nCheckPerceived (optional) - only returns objects if they are within the perception radius.
+* @author Jon Cooper
+*/
+object[] GetNearestObjectByGroup( object oObject, int nGroupId, int nObjectType = OBJECT_TYPE_ALL, int nNumberOfObjects = 1, int nCheckLiving = 0, int nCheckPerceived = 0, int nIncludeSelf = 0 ) = 151;
+
+
+/** @brief Returns N nearest object of a specific type, with a specifc Hostility
+*
+* Returns N nearest object of a specific type, with a specifc Hostility
+*
+* @param * oObject - target Object
+* @param * nObjectType - type for the objects to query for their distance
+* @param * nHostility - Hostility for the objects to query (true/false)
+* @param * nNumberOfObjects (optional) - Number of objects to return
+* @param * nCheckLiving (optional) - only returns objects if they are alive
+* @param * nCheckPerceived (optional) - only returns objects if they are within the perception radius.
+* @author Jon Cooper
+*/
+object[] GetNearestObjectByHostility( object oObject, int nHostility, int nObjectType = OBJECT_TYPE_ALL, int nNumberOfObjects = 1, int nCheckLiving = 0, int nCheckPerceived = 0, int nIncludeSelf = 0  ) = 152;
+
+
+/** @brief N nearest objects of a specific type to a Location
+*
+* Returns N nearest objects of a specific type to a Location
+*
+* @param * Location - target Location
+* @param * nObjectType - type for the objects to query for their distance
+* @param * nNumberOfObjects (optional) - Number of objects to return
+* @author Jon Cooper
+*/
+object[] GetNearestObjectToLocation( location lLocation, int nObjectType = OBJECT_TYPE_ALL, int nNumberOfObjects = 1  ) = 153;
+
+
+/** @brief Verifies of a target object is visible to the player
+*
+* Returns 1 if an object is visible, otherwise 0
+*
+* @param * oTarget - target object
+* @author Jon Cooper
+*/
+int GetObjectVisibility( object oTarget  ) = 154;
+
+
+/** @brief Gets the ID of a visual effect
+*
+* Returns the id of a visual effect, otherwise 0
+*
+* @param effect VFX
+* @author Jon Cooper
+*/
+int GetVisualEffectId( effect eVFX  ) = 155;
+
+
+/** @brief Fire a projectile from a specified source point to a target position
+*
+* @param nType the projectile type (see the PRJ 2da)
+* @param vSourcePosition start position for the projectile
+* @param vTargetPosition end position to hit
+* @param nCrustEffectId crust vfx to apply to the projectile
+* @param bWideAngle enable this to make the projectile follow a longer trajectory
+* @param oEventTarget object to send the impact event to
+* @returns projectile id
+* @sa FireHomingProjectile, SetProjectileImpactEvent
+* @author Jon Cooper
+*/
+object FireProjectile(int nType, vector vSourcePosition, vector vTargetPosition, int nCrustEffectId = 0, int bWideAngle = FALSE, object oEventTarget = OBJECT_INVALID) = 156;
+
+
+/** @brief Fire a tracking projectile from a specified source point to a target object
+*
+* @param nType the projectile type (see the PRJ 2da)
+* @param vSourcePosition start position for the projectile
+* @param oTarget object to follow and hit
+* @param nCrustEffectId crust vfx to apply to the projectile
+* @param oEventTarget object to send the impact event to
+* @returns projectile id
+* @sa FireProjectile, SetProjectileImpactEvent
+* @author Jon Cooper
+*/
+object FireHomingProjectile(int nType, vector vSourcePosition, object oTarget, int nCrustEffectId = 0, object oEventTarget = OBJECT_INVALID) = 157;
+
+/** @brief Sets a tactic entry for a party member
+*
+* @author Jon
+*/
+void SetTacticEntry(object oCreature, int nIndex, int nEnabled, int nTargetType, int nCondition, int nCommandType, int nCommandParam = 0) = 158;
+
+
+/** @brief Sets the number of tactics available.
+*
+* @param oCreature - the creature to query.
+* @param nNumTactics - the number of tactics that can be set by the user.
+* @author Jon
+*/
+void SetNumTactics(object oCreature, int nNumTactics, int bSendNotification = FALSE) = 159;
+
+/** @brief Changes the primary controlled creature if they are in the active party.
+*          Calling this implicitly makes that creature controllable if it was
+*          previously set as uncontrollable.
+* @author Jon
+*/
+void SetPrimaryControlled(object oFollower) = 160;
+
+
+
+/** @brief Get the body bag placeable associated with this creature..
+*  
+*   @author Jon
+*/
+object GetCreatureBodyBag(object oCreature) = 161;
+
+
+/** @Returns an array with all objects in an area.
+*
+* Returns an array with all objects in an area. You can also specify
+* a tag so the array only has all objects with that tag in that area.
+* Check the size afterwards with GetArraySize.
+*
+* @param oArea - an area object.
+* @param sTag - If specified, only objects will this tag will be returned. 
+* @author Jon
+*/
+object[] GetObjectsInArea(object oArea, string sTag = "") = 162;
+
+
+/** @brief Returns an object's type.
+*
+* Returns the object type of the object oObject. Object types are constants (OBJECT_TYPE_*). Returns OBJECT_TYPE_INVALID on failure.
+*
+* @param oObject - the object to get the type of
+* @returns One of the object type constants (OBJECT_TYPE_*) or OBJECT_TYPE_INVALID on failure.
+* @author Jon
+*/
+int GetObjectType( object oObject ) = 163;
+
+
+/** @brief Returns whether the creature or placeable can be interacted with.
+*
+* @author Jon
+*/
+int GetObjectInteractive(object oObject) = 164;
+
+
+/** @brief Gets the base type of the placeable.
+*
+* @param oPlaceable - The placeable to get the type from
+* @author Jon
+*/
+int GetPlaceableBaseType(object oPlaceable) = 165;
+
+
+/** @brief Gets the BaseItemType of an item
+*
+* returns the base item type of an item as BASE_ITEM_*
+*
+* @param oItem - An Item Object
+* @author Jon
+*/
+int GetBaseItemType(object oItem) =  166;
+
+
+/** @brief Get the treasure category.
+*
+* @param oCreature - The creature.
+* @author Jon
+*/
+int GetCreatureTreasureCategory(object oCreature) = 167;
+
+
+/** @brief Get the treasure category.
+*
+* @param oPlaceable - The placeable.
+* @author Jon
+*/
+int GetPlaceableTreasureCategory(object oPlaceable) = 168;
+
+
+/** @brief Retrive the base value of an item.
+*
+* @author Jon
+*/
+int GetItemValue(object oItem) = 169;
+
+/** @brief Gets a creature's racial type
+*
+* Gets a creature's racial type. 
+*
+* @param oCreature - The creature whose racial type we get 
+* @author Jon
+*/
+int GetCreatureRacialType( object oCreature ) = 170;
+
+
+/** @brief Returns whether or not the player has unlocked the specified achievement.
+*
+* @author Jon
+*/
+int GetHasAchievementByID(int nID) = 171;  

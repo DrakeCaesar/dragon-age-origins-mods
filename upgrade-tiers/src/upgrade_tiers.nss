@@ -111,7 +111,7 @@ const int MAX_TIER = 9;
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut47";
+const string BUILD = "ut49";
 
 // The display shows only a handful of floaties at once, so the per-operation lines
 // are opt-in. A negative tier argument turns them on: "runscript upgrade_tiers -9"
@@ -443,10 +443,11 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         return 0;
     }
 
-    // Runes installed in an item are lost when its material changes, and the API has
-    // nothing that puts them back. That is accepted: a rune is an item the player can
-    // install again, whereas a gear tier, once the window for it has passed, cannot be
-    // recovered at all. The count is only reported.
+    // Runes installed in an item are dropped when its material changes. The engine
+    // does expose AddItemSubItem (822) and RemoveItemSubItem (823), and their
+    // handlers make the shapes clear, but neither is declared in script.ldf and the
+    // script compiler refuses to bind to an id it cannot resolve, so they are out of
+    // reach from a script. The cost is therefore only measured and reported.
     int nRunedBefore = FilledSlots(oItem);
 
     int nTier = nTargetTier;
@@ -615,12 +616,28 @@ void main()
     g_sFirstName = "";
     g_sLastName = "";
 
-    // Only the Warden's own inventory is swept. In Dragon Age that is the shared
-    // party stash, so it holds nearly everything the party owns; a companion's
-    // inventory holds a handful of spares and camp storage holds less, while every
-    // extra creature costs another full sweep. Restricting the sweep here keeps each
-    // run well inside what the script can do and covers the inventory that matters.
+    // Every inventory is swept: the Warden's, which is the shared party stash and
+    // holds nearly everything, then each companion's own, then camp storage.
     UpgradeCreature(oHero, nTargetTier);
+
+    object[] aParty = GetPartyList();
+    int nParty = GetArraySize(aParty);
+    int nIndex = 0;
+    while (nIndex < nParty)
+    {
+        UpgradeCreature(aParty[nIndex], nTargetTier);
+        nIndex = nIndex + 1;
+    }
+
+    // Companions left at camp are not in the party list; their kits live here.
+    object[] aPool = GetPartyPoolList();
+    int nPool = GetArraySize(aPool);
+    nIndex = 0;
+    while (nIndex < nPool)
+    {
+        UpgradeCreature(aPool[nIndex], nTargetTier);
+        nIndex = nIndex + 1;
+    }
 
     // Two lines: what happened, and where it stands. Everything else was diagnostic
     // scaffolding for the investigation and is only shown with a negative argument.
@@ -661,7 +678,9 @@ void main()
                 + " t8-" + IntToString(g_nTier8) + " t9-" + IntToString(g_nTier9),
             FLOATY_MESSAGE, 16777215, 6.0);
         DisplayFloatyMessage(oHero, "runed" + IntToString(g_nRuned)
-                + " " + g_sFirstRuned + " " + g_sFirstFail,
+                + " " + g_sFirstRuned,
+            FLOATY_MESSAGE, 16777215, 6.0);
+        DisplayFloatyMessage(oHero, "firstFail " + g_sFirstFail,
             FLOATY_MESSAGE, 16777215, 6.0);
     }
 }

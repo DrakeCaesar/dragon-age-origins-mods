@@ -52,11 +52,16 @@ With that in place a single run covers the whole inventory.
 
 ## How it works
 
-Four fields describe an item's metal or wood: `Material` (its current one) and
-`MaterialProgress` (which ladder it follows). Every material id belongs to exactly
-one ladder at exactly one position, so family and tier are both recoverable from
-the material alone - no 2DA lookup is involved, so nothing can go stale when the
-Awakening tables are merged in.
+`MaterialProgress` names a row in the material table (199), and that row's
+`Material1` to `Material15` columns list the materials the item may become. The
+row is the authority on **which** materials are permitted: a Darkspawn Dagger's
+family stops at Steel, so nothing will ever make it Dragonbone.
+
+The row says nothing about how good each material is, and the material types table
+(89) carries no rank at all for wood or leather - reading tiers from it silently
+skipped every bow, crossbow and piece of light armour. So the ranks are stated here,
+as one ladder per family, matching the tiers the game shows: Dragonbone, Dragonthorn
+and Drakeskin are all tier 7.
 
 | ladder | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -70,8 +75,35 @@ Awakening tables are merged in.
 Columns 8 and 9 are the Awakening materials, so they are reachable when Awakening
 in the OC is installed.
 
-### What makes it safe
+The row is then scanned and the best material at or below the target tier is
+applied, where the target is the tier a store would stock for the buyer's level.
 
+### A row is a family, not an item
+
+Of the 1016 item templates only 54 distinct rows are in use:
+
+| templates sharing one row | rows |
+|---|---|
+| 258 | 1 |
+| 200 | 1 |
+| 134 | 1 |
+| 54 | 1 |
+| 2-27 | 14 |
+| 1 | 12 |
+
+So a row states what a *family* scales through, not that every member exists at
+each step. One row covers 258 templates. That is why the Darkspawn Dagger stopping
+at Steel is correct - its whole family ends there - and also why a generous family
+row must never be applied to a named piece.
+
+## What makes it safe
+
+- **Named items are skipped.** A hand-placed item - a chest reward, a quest gift -
+  sits at the material it was authored with and no store ever rerolls it. Its row
+  only describes the family it belongs to, so following the row invents tiers the
+  piece was never made in. The Helm of Honnleath belongs to a family whose row
+  reaches Red Steel while the helm itself was authored in Grey Iron; `GetItemUnique`
+  is the test, and the count of named items left alone is reported.
 - **Only the material is written.** `ITEM_RUNE_ENABLED`, the slot capability
   variable that other upgrade mods overwrite, is never touched. Applying a material
   drops the runes installed in the item; that is accepted, because a rune is an item
@@ -80,9 +112,9 @@ in the OC is installed.
 - **Uninstalled tiers cannot corrupt an item.** After setting the new material the
   script reads it back; if the engine refused the value the original is restored.
   That is how an install without the Awakening tiers behaves.
-- **Unknown materials are left alone.** Star metal and the clothing, robe and
-  unique-piece materials are not in any ladder, so they are skipped rather than
-  pushed into a nonsense tier.
+- **Materials outside every ladder are left alone.** Star metal and the clothing,
+  robe and single-piece materials are not in any ladder, so they are skipped rather
+  than pushed into a nonsense tier.
 - **The change is bounded.** A run stops after `MAX_UPDATES` changes (10000, far
   above any real inventory) purely as a guard against a runaway loop.
 

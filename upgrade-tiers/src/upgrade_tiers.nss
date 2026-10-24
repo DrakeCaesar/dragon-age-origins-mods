@@ -46,10 +46,11 @@
     whose row reaches Red Steel while the helm itself was authored in Grey Iron, and
     following the row put it at a tier it was never made in.
 
-    Items worth nothing are skipped too. A creature's built-in attack has a real
-    progression row and can sit in the party inventory - the Mabari's bite is one - and
-    raising its tier makes a companion hit harder than the designers authored, with
-    nothing in the UI to show it.
+    Items worth nothing are skipped, and so are items the game cannot name. A creature's
+    built-in attack has a real progression row and can sit in the party inventory - the
+    Mabari's bite is one - and raising its tier makes a companion hit harder than the
+    designers authored, with nothing in the UI to show it. That item's name reference
+    resolves to no string at all, which is why it once printed as a bare "2->7".
 
     Runes
     -----
@@ -107,7 +108,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut63";
+const string BUILD = "ut64";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -207,22 +208,6 @@ void Record(string sText)
     g_sUpdated = g_sUpdated + sText + "\n";
 }
 
-// GetName returns an empty string for a few items, which used to print a line with
-// nothing in front of the tier change. The template tag is always present, so it
-// stands in, and it names the item precisely enough to look it up.
-string ItemLabel(object oItem)
-{
-    string sLabel = GetName(oItem);
-    if (sLabel == "")
-    {
-        sLabel = GetTag(oItem);
-    }
-    if (sLabel == "")
-    {
-        sLabel = "unnamed item";
-    }
-    return sLabel;
-}
 
 // Raises one item to the best material its progression row offers within reach of the
 // target tier. Returns 1 when the item changed.
@@ -243,9 +228,19 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     // A value of zero marks something that is not gear: the Mabari's bite, Shale's
     // fists, a quest trinket. The dog's weapon carries a real progression row and sits
     // in the party inventory, so it was reached and raised to Dragonbone, quietly making
-    // a companion's natural attack hit far harder than the designers authored. Creature
-    // weapons are never shown or sold, so value is the only handle a script has on them.
+    // a companion's natural attack hit far harder than the designers authored.
     if (GetItemValue(oItem) <= 0)
+    {
+        return 0;
+    }
+
+    // The name is the second handle on the same thing, and the more direct one: the
+    // Mabari's bite is the item that once printed a bare "2->7", because its name
+    // reference resolves to no string at all. It is also the only signal that is
+    // definitely present, since GetItemValue reports a price the template may not
+    // actually carry. Real gear always has a name, so an unnamed item is not one the
+    // player can use, see, or sell.
+    if (GetName(oItem) == "")
     {
         return 0;
     }
@@ -305,7 +300,7 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (GetItemMaterialType(oItem) == nBestMaterial)
     {
         g_nChanged = g_nChanged + 1;
-        Record(ItemLabel(oItem) + " " + IntToString(nCurrentTier)
+        Record(GetName(oItem) + " " + IntToString(nCurrentTier)
             + "->" + IntToString(nBestTier));
         return 1;
     }

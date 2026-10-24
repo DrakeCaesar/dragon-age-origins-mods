@@ -46,6 +46,12 @@
     whose row reaches Red Steel while the helm itself was authored in Grey Iron, and
     following the row put it at a tier it was never made in.
 
+    Items the game cannot name are skipped as well. A creature's built-in attack has a
+    real progression row and can sit in the party inventory - the Mabari's bite is one -
+    and raising its tier makes a companion hit harder than the designers authored, with
+    nothing in the UI to show it. Its name reference resolves to no string at all, which
+    is also why it once printed as a bare "2->7".
+
     Runes
     -----
     An item's runes are dropped when its material changes. The engine does expose
@@ -102,7 +108,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut62";
+const string BUILD = "ut68";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -202,22 +208,6 @@ void Record(string sText)
     g_sUpdated = g_sUpdated + sText + "\n";
 }
 
-// GetName returns an empty string for a few items, which used to print a line with
-// nothing in front of the tier change. The template tag is always present, so it
-// stands in, and it names the item precisely enough to look it up.
-string ItemLabel(object oItem)
-{
-    string sLabel = GetName(oItem);
-    if (sLabel == "")
-    {
-        sLabel = GetTag(oItem);
-    }
-    if (sLabel == "")
-    {
-        sLabel = "unnamed item";
-    }
-    return sLabel;
-}
 
 // Raises one item to the best material its progression row offers within reach of the
 // target tier. Returns 1 when the item changed.
@@ -231,6 +221,15 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     // hundreds of templates - so following the row there invents tiers the piece was
     // never made in. The Helm of Honnleath is the case that showed this.
     if (GetItemUnique(oItem) == TRUE)
+    {
+        return 0;
+    }
+
+    // An item the game cannot name is not gear the player can equip, see or sell - it is
+    // a creature's built-in attack. The Mabari's bite carries a real progression row and
+    // sits in the party inventory, so without this it is raised to Dragonbone and a
+    // companion silently hits harder than the designers authored.
+    if (GetName(oItem) == "")
     {
         return 0;
     }
@@ -290,7 +289,7 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (GetItemMaterialType(oItem) == nBestMaterial)
     {
         g_nChanged = g_nChanged + 1;
-        Record(ItemLabel(oItem) + " " + IntToString(nCurrentTier)
+        Record(GetName(oItem) + " " + IntToString(nCurrentTier)
             + "->" + IntToString(nBestTier));
         return 1;
     }

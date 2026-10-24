@@ -8,42 +8,43 @@
 
     Which tiers an item supports
     ---------------------------
-    Not every item can be every material. The engine has the final say: a material
-    is applied, read back, and if it did not take the next tier down is tried. So
-    the result is the highest tier that particular item accepts, not the highest
-    that exists in general.
+    Each item carries a MaterialProgress row, and the material table (199) holds that
+    row's Material1 to Material15 columns. The row is the authority on what the item
+    may become: a Darkspawn Dagger's row stops at Steel, so nothing will ever make it
+    Dragonbone. A hardcoded list of materials ignored the row and produced items at
+    tiers that do not exist for them.
 
-    The material ids below are how the ladder is walked. They were taken from the
-    item templates and checked against all 1016 of them: no material appears in two
-    ladders, and every item that has a tiered material falls into exactly one of
-    these families. Ids that are not listed (clothing, robes, single uniques, star
-    metal) are deliberately left alone.
+    The target is the best the vendor could stock for that item at the buyer's level.
+    The row's columns are slots, not tiers. What a player calls a tier is the material's
+    own rank: Iron/Grey Iron/Steel/Veridium/Red Steel/Silverite/Dragonbone for metal,
+    Elm/Ash/Yew/Whitewood/Ironbark/Sylvanwood/Dragonthorn for wood, and the hide ladder
+    for leather. The material types table (89) does not carry that rank for wood or
+    leather, so the ranks are stated here as per family ladders of material ids,
+    checked against all 1016 item templates.
 
-        melee weapon   40 41 43 42 44 45 46 | 20050 20051
-        bow            33 34 35 36 37 38 39 | 20040 20041
-        metal armour    1  2  8  4  5  3  6 | 20010 20011
-        leather        60 28 29 30 31 17 32 | 20030 20031
-        metal shield   47 48 49 81 50 51 52 | 20060 20061
-        wood shield    79  9 11 15 13  7 10 | 20020 20021
+    The target is the best tier the store would stock for a buyer of this level:
 
-    The last two columns are the Awakening materials, so items reach them only if
-    their own progression allows it.
+        level  1-2  ->  2      level  9-10 ->  6
+        level  3-4  ->  3      level 11-13 ->  7
+        level  5-6  ->  4      level 14-16 ->  8
+        level  7-8  ->  5      level 17+   ->  9
 
-    Why several passes over each inventory
-    --------------------------------------
-    Changing an item's material can invalidate the other item references already
-    held from the same inventory read, so one pass over a snapshot reaches only part
-    of the list. The list is fetched again after each pass, which is much cheaper
-    than a fetch per item.
+    Tier 7 at level 12 matches what a store was seen offering; the other bands are
+    fitted rather than confirmed, so they are worth checking at a second level. The
+    whole row is then scanned and the best material whose tier is at or below that
+    target is applied. The row remains the hard ceiling, so an item that stops at Steel
+    stays at Steel however high the level is.
+
+    Unique items are skipped: their material is part of the item's design.
 
     Runes
-        -----
-        An item's runes are lost when its material changes, and the script API can read
-        the slot list but has nothing that puts a sub item back. That is accepted: a rune
-        is an item the player can install again, while a tier the player has outgrown
-        cannot be recovered. The count of upgraded items that had runes is reported so the
-        cost is visible. The slot capability variable that other upgrade mods overwrite
-        (ITEM_RUNE_ENABLED) is never written here.
+    -----
+    An item's runes are dropped when its material changes. The engine does expose
+    AddItemSubItem (822) and RemoveItemSubItem (823), but neither is declared in
+    script.ldf and the compiler refuses to bind to an id it cannot resolve, so
+    restoring them is out of reach from a script. The count of upgraded items that
+    held runes is reported so the cost stays visible. The slot capability variable
+    that other upgrade mods overwrite (ITEM_RUNE_ENABLED) is never written here.
 
     Reading the result
     ------------------
@@ -51,36 +52,33 @@
     debug text and the GUI log window both produce nothing. A normal run reports two
     short lines:
 
-        Upgraded 25 items to tier 9
-        Run again for the next batch
+        Upgraded 24 items to tier 7
+        All done
 
     When there is nothing left it says so, and repeating the command produces the
     same answer, which is the intended end state rather than a fault:
 
-        Nothing left at tier 9
+        Nothing left at tier 7
 
     A negative argument turns on the diagnostics, and its magnitude is the tier:
-
         runscript upgrade_tiers -9
 
     Every item is then reported as it is handled, and a summary adds how many were
-    already at target, how many had a material outside the ladders, how many writes
-    the engine refused, and the spread of tiers found:
+    already at their ceiling, how many had no usable row, how many writes the engine
+    refused, and how many items sit at each tier:
 
-        7/769 nofam m61     material has no ladder, untouched
-        8/769 top t6        already at or above the target
+        7/769 noProg m61    no progression row, or a unique item, untouched
+        8/769 noTier m61    material is not on any family ladder
+        9/769 top t3 row7 target7   already at its best, with the row's ceiling and target
         9/769 set46         about to write material 46
         9/769 ok t7         it took
-        9/769 took-no       it did not take, next tier down is tried
-        9/769 fail          no tier between current and target was accepted
-
-    A material an item cannot take is normal: the progression decides what an item
-    may become, and only the Awakening materials reach tiers 8 and 9.
+        9/769 took-no       the engine would not store it
+        9/769 fail          nothing in the row was accepted
 
     Usage
     -----
-        runscript upgrade_tiers          highest tier your level allows
-        runscript upgrade_tiers 9        highest tier up to 9 that the item allows
+        runscript upgrade_tiers          the tier your level earns
+        runscript upgrade_tiers 9        force a target tier (1-9)
         runscript upgrade_tiers -9       the same, with diagnostics
 
     A single run covers the whole inventory. The engine's own per-script instruction
@@ -88,7 +86,7 @@
     made earlier versions appear to do nothing; it has far more than enough headroom
     now, so the work no longer has to be spread over repeated invocations.
 
-        Upgraded 24 items to tier 9
+        Upgraded 24 items to tier 7
         All done
 
     Only the Warden's inventory is swept. In Dragon Age that inventory is the shared
@@ -102,7 +100,6 @@
 #include "events_h"
 #include "2da_constants_h"
 
-const int MAX_TIER = 9;
 
 // The engine used to stop any script at 131072 VM instructions, silently, which is
 // why this script once had to change only a handful of items per run and be
@@ -111,7 +108,7 @@ const int MAX_TIER = 9;
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut49";
+const string BUILD = "ut58";
 
 // The display shows only a handful of floaties at once, so the per-operation lines
 // are opt-in. A negative tier argument turns them on: "runscript upgrade_tiers -9"
@@ -121,6 +118,7 @@ int g_bVerbose = FALSE;
 int g_nChanged = 0;
 int g_nWearable = 0;
 int g_nExamined = 0;
+int g_nStashSize = -1;
 int g_nPending = 0;
 
 // Names of the first and last item raised this run. Only read for items that were
@@ -130,7 +128,8 @@ string g_sFirstName = "";
 string g_sLastName = "";
 
 int g_nAtTop = 0;
-int g_nNoLadder = 0;
+int g_nNoRow = 0;
+int g_nNoTier = 0;
 int g_nRefused = 0;
 int g_nTookNo = 0;
 int g_nRuned = 0;
@@ -166,192 +165,84 @@ void CountTier(int nTier)
 }
 string g_sFirstFail = "";
 
-// Item counts describe the inventory as found, so they are only taken on the
-// first pass over each creature; later passes exist just to catch stragglers.
+// ---------------------------------------------------------------- progression lookups
 
+// The engine knows which materials an item may become: each item carries a
+// MaterialProgress row, and the material table (199) holds that row's Material1 to
+// Material15 columns. Reading the row respects an item's own ceiling, so a Darkspawn
+// Dagger that stops at Steel stays at Steel.
+//
+// The row alone is not enough. Tier numbers cannot be read from the material types
+// table (89) for every family: wood and leather materials return nothing there, which
+// silently skipped every bow, crossbow and piece of light armour. The ladders below are
+// the material ids per family, checked against all 1016 item templates; no material
+// appears in two ladders. They name the same tiers the wiki does, so Dragonbone,
+// Dragonthorn and Drakeskin are all tier 7.
+const int MAT_COLUMNS = 15;
 
-const int FAMILY_NONE = 0;
-const int FAMILY_MELEE = 1;
-const int FAMILY_BOW = 2;
-const int FAMILY_METAL_ARMOUR = 3;
-const int FAMILY_LEATHER = 4;
-const int FAMILY_METAL_SHIELD = 5;
-const int FAMILY_WOOD_SHIELD = 6;
+// Material tiers run 1 to 9. The argument to the command is a tier, not a column.
+const int MAX_TIER = 9;
 
-// ---------------------------------------------------------------- ladder lookups
-
-int FamilyFromMaterial(int nMaterial)
+int MaterialAtColumn(int nProgression, int nColumn)
 {
-    switch(nMaterial)
+    if (nProgression <= 0 || nColumn < 1 || nColumn > MAT_COLUMNS)
     {
-        case 40: case 41: case 43: case 42: case 44: case 45: case 46:
-        case 20050: case 20051:
-            return FAMILY_MELEE;
-
-        case 33: case 34: case 35: case 36: case 37: case 38: case 39:
-        case 20040: case 20041:
-            return FAMILY_BOW;
-
-        case 1: case 2: case 8: case 4: case 5: case 3: case 6:
-        case 20010: case 20011:
-            return FAMILY_METAL_ARMOUR;
-
-        case 60: case 28: case 29: case 30: case 31: case 17: case 32:
-        case 20030: case 20031:
-            return FAMILY_LEATHER;
-
-        case 47: case 48: case 49: case 81: case 50: case 51: case 52:
-        case 20060: case 20061:
-            return FAMILY_METAL_SHIELD;
-
-        case 79: case 9: case 11: case 15: case 13: case 7: case 10:
-        case 20020: case 20021:
-            return FAMILY_WOOD_SHIELD;
+        return 0;
     }
-    return FAMILY_NONE;
+    return GetM2DAInt(TABLE_MATERIAL, "Material" + ToString(nColumn), nProgression);
 }
 
-int TierFromMaterial(int nMaterial)
+
+// The rank of a material, 1 to 9, across every family. The material types table (89)
+// does not carry this for wood or leather, so the ranks are stated here: Iron and Elm
+// and Rough Hide are all tier 1, and Dragonbone and Dragonthorn and Drakeskin are all
+// tier 7. This is used only to read a tier; the progression row still decides which
+// materials an item may become.
+int TierOfMaterial(int nMaterial)
 {
-    switch(nMaterial)
+    switch (nMaterial)
     {
-        case 40: case 33: case 1: case 60: case 47: case 79:
+        case 40: case 1: case 60: case 47: case 33: case 79:
             return 1;
-        case 41: case 34: case 2: case 28: case 48: case 9:
+        case 41: case 2: case 28: case 48: case 34: case 9:
             return 2;
-        case 43: case 35: case 8: case 29: case 49: case 11:
+        case 43: case 8: case 29: case 49: case 35: case 11:
             return 3;
-        case 42: case 36: case 4: case 30: case 81: case 15:
+        case 42: case 4: case 30: case 81: case 36: case 15:
             return 4;
-        case 44: case 37: case 5: case 31: case 50: case 13:
+        case 44: case 5: case 31: case 50: case 37: case 13:
             return 5;
-        case 45: case 38: case 3: case 17: case 51: case 7:
+        case 45: case 3: case 17: case 51: case 38: case 7:
             return 6;
-        case 46: case 39: case 6: case 32: case 52: case 10:
+        case 46: case 6: case 32: case 52: case 39: case 10:
             return 7;
 
-        case 20050: case 20040: case 20010: case 20030: case 20060: case 20020:
+        case 20050: case 20010: case 20030: case 20060: case 20040: case 20020:
             return 8;
-        case 20051: case 20041: case 20011: case 20031: case 20061: case 20021:
+        case 20051: case 20011: case 20031: case 20061: case 20041: case 20021:
             return 9;
     }
     return 0;
 }
 
-int MaterialForTier(int nFamily, int nTier)
+// The tier the store stocks for a buyer of this level. Calibrated from observed
+// vendor behaviour: at level 11-12 the store offers Dragonbone, which is tier 7. A
+// plain (level/2)+1 gives 6 there, one short, so the bands are stated explicitly.
+// The creature level is printed in the diagnostics so this can be checked against the
+// vendor in one run.
+int TierForLevel(int nLevel)
 {
-    if (nFamily == FAMILY_MELEE)
-    {
-        switch(nTier)
-        {
-            case 1: return 40;
-            case 2: return 41;
-            case 3: return 43;
-            case 4: return 42;
-            case 5: return 44;
-            case 6: return 45;
-            case 7: return 46;
-            case 8: return 20050;
-            case 9: return 20051;
-        }
-    }
-    else if (nFamily == FAMILY_BOW)
-    {
-        switch(nTier)
-        {
-            case 1: return 33;
-            case 2: return 34;
-            case 3: return 35;
-            case 4: return 36;
-            case 5: return 37;
-            case 6: return 38;
-            case 7: return 39;
-            case 8: return 20040;
-            case 9: return 20041;
-        }
-    }
-    else if (nFamily == FAMILY_METAL_ARMOUR)
-    {
-        switch(nTier)
-        {
-            case 1: return 1;
-            case 2: return 2;
-            case 3: return 8;
-            case 4: return 4;
-            case 5: return 5;
-            case 6: return 3;
-            case 7: return 6;
-            case 8: return 20010;
-            case 9: return 20011;
-        }
-    }
-    else if (nFamily == FAMILY_LEATHER)
-    {
-        switch(nTier)
-        {
-            case 1: return 60;
-            case 2: return 28;
-            case 3: return 29;
-            case 4: return 30;
-            case 5: return 31;
-            case 6: return 17;
-            case 7: return 32;
-            case 8: return 20030;
-            case 9: return 20031;
-        }
-    }
-    else if (nFamily == FAMILY_METAL_SHIELD)
-    {
-        switch(nTier)
-        {
-            case 1: return 47;
-            case 2: return 48;
-            case 3: return 49;
-            case 4: return 81;
-            case 5: return 50;
-            case 6: return 51;
-            case 7: return 52;
-            case 8: return 20060;
-            case 9: return 20061;
-        }
-    }
-    else if (nFamily == FAMILY_WOOD_SHIELD)
-    {
-        switch(nTier)
-        {
-            case 1: return 79;
-            case 2: return 9;
-            case 3: return 11;
-            case 4: return 15;
-            case 5: return 13;
-            case 6: return 7;
-            case 7: return 10;
-            case 8: return 20020;
-            case 9: return 20021;
-        }
-    }
-    return 0;
+    if (nLevel <= 2) { return 2; }
+    if (nLevel <= 4) { return 3; }
+    if (nLevel <= 6) { return 4; }
+    if (nLevel <= 8) { return 5; }
+    if (nLevel <= 10) { return 6; }
+    if (nLevel <= 13) { return 7; }
+    if (nLevel <= 16) { return 8; }
+    return 9;
 }
 
 // ---------------------------------------------------------------- item work
-
-// The material ladder is the filter: anything whose material has no tier is not
-// tiered gear, so no separate type test is needed. That saves a call per item, and
-// there are far more non-gear items than gear.
-
-// The tier a character has earned. These bands follow the same shape the store
-// uses: early game stays iron, and the top of the ladder is only reached late.
-int TargetTierForLevel(int nLevel)
-{
-    if (nLevel < 3) { return 2; }
-    if (nLevel < 6) { return 3; }
-    if (nLevel < 9) { return 4; }
-    if (nLevel < 12) { return 5; }
-    if (nLevel < 15) { return 6; }
-    if (nLevel < 18) { return 7; }
-    if (nLevel < 21) { return 8; }
-    return 9;
-}
 
 int CreatureLevel(object oCreature)
 {
@@ -406,91 +297,124 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         DisplayFloatyMessage(GetHero(), "n" + IntToString(g_nExamined)
                 + " up" + IntToString(g_nChanged)
                 + " top" + IntToString(g_nAtTop)
-                + " none" + IntToString(g_nNoLadder)
+                + " none" + IntToString(g_nNoRow)
                 + " fail" + IntToString(g_nRefused)
                 + " rn" + IntToString(g_nRuned)
                 + " st" + IntToString(g_nStale),
             FLOATY_MESSAGE, 16777215, 4.0);
     }
 
-    int nOld = GetItemMaterialType(oItem);
-    int nFamily = FamilyFromMaterial(nOld);
     string sAt = IntToString(nIndex) + "/" + IntToString(nCount);
+    int nOld = GetItemMaterialType(oItem);
 
-    if (nFamily == FAMILY_NONE)
+    // The item's own progression is the authority on what it may become: no row means
+    // there is nothing to walk. Unique items are not excluded - a named bow still
+    // follows a row, and the row already caps what it can become, so skipping them
+    // only left those items behind.
+    int nProg = GetItemMaterialProgression(oItem);
+    if (nProg <= 0)
     {
-        g_nNoLadder = g_nNoLadder + 1;
+        g_nNoRow = g_nNoRow + 1;
         g_nUnknown = g_nUnknown + 1;
-        Line(sAt + " nofam m" + IntToString(nOld));
+        Line(sAt + " noProg m" + IntToString(nOld));
         return 0;
     }
 
-    int nCurrentTier = TierFromMaterial(nOld);
+    // The tier comes from the family ladders, which cover wood and leather as well as
+    // metal; the row above decided which materials are permitted, and this decides how
+    // good they are. Both are needed: the row without tiers skipped every bow, and
+    // tiers without the row invented materials the item does not exist in.
+    int nCurrentTier = TierOfMaterial(nOld);
+    if (nCurrentTier <= 0)
+    {
+        g_nNoTier = g_nNoTier + 1;
+        g_nUnknown = g_nUnknown + 1;
+        Line(sAt + " noTier m" + IntToString(nOld));
+        return 0;
+    }
+
     CountTier(nCurrentTier);
-    if (nCurrentTier >= nTargetTier)
+
+    // Scan the whole row and keep the best material whose tier is within reach. The
+    // row is the hard ceiling, so an item that stops at Steel stays at Steel however
+    // generous the level is; the level only decides how far up the row we may go.
+    int nBestTier = 0;
+    int nBestMaterial = 0;
+    int nRowMaxTier = 0;
+    int nCol = 1;
+    while (nCol <= MAT_COLUMNS)
+    {
+        int nCandidate = MaterialAtColumn(nProg, nCol);
+        if (nCandidate != 0)
+        {
+            int nCandidateTier = TierOfMaterial(nCandidate);
+            if (nCandidateTier > nRowMaxTier)
+            {
+                nRowMaxTier = nCandidateTier;
+            }
+            if (nCandidateTier <= nTargetTier && nCandidateTier > nBestTier)
+            {
+                nBestTier = nCandidateTier;
+                nBestMaterial = nCandidate;
+            }
+        }
+        nCol = nCol + 1;
+    }
+
+    if (nBestMaterial == 0 || nBestTier <= nCurrentTier)
     {
         g_nAtTop = g_nAtTop + 1;
-        Line(sAt + " top t" + IntToString(nCurrentTier));
+        Line(sAt + " top t" + IntToString(nCurrentTier) + " row" + IntToString(nRowMaxTier)
+            + " target" + IntToString(nTargetTier));
         return 0;
     }
 
     g_nWearable = g_nWearable + 1;
     g_nPending = g_nPending + 1;
 
-    // Nothing more is changed once the budget is spent.
     if (g_nChanged >= MAX_UPDATES)
     {
         return 0;
     }
 
     // Runes installed in an item are dropped when its material changes. The engine
-    // does expose AddItemSubItem (822) and RemoveItemSubItem (823), and their
-    // handlers make the shapes clear, but neither is declared in script.ldf and the
-    // script compiler refuses to bind to an id it cannot resolve, so they are out of
-    // reach from a script. The cost is therefore only measured and reported.
+    // does expose AddItemSubItem (822) and RemoveItemSubItem (823), but neither is
+    // declared in script.ldf and the compiler refuses to bind to an id it cannot
+    // resolve, so restoring them is out of reach here. The cost is only reported.
     int nRunedBefore = FilledSlots(oItem);
 
-    int nTier = nTargetTier;
-    while (nTier > nCurrentTier)
+    // Apply the chosen material. The tier was already checked against the row and the
+    // level, so there is no walk here; a rejected write only leaves the item as it was.
+    Line(sAt + " set" + IntToString(nBestMaterial));
+    SetItemMaterialType(oItem, nBestMaterial);
+    if (GetItemMaterialType(oItem) == nBestMaterial)
     {
-        int nNew = MaterialForTier(nFamily, nTier);
-        if (nNew != 0 && nNew != nOld)
+        if (nRunedBefore > 0)
         {
-            Line(sAt + " set" + IntToString(nNew));
-            SetItemMaterialType(oItem, nNew);
-            if (GetItemMaterialType(oItem) == nNew)
+            g_nRuned = g_nRuned + 1;
+            if (g_sFirstRuned == "")
             {
-                if (nRunedBefore > 0)
-                {
-                    g_nRuned = g_nRuned + 1;
-                    if (g_sFirstRuned == "")
-                    {
-                        g_sFirstRuned = GetName(oItem) + "|" + IntToString(nRunedBefore);
-                    }
-                }
-                g_nChanged = g_nChanged + 1;
-                if (g_sFirstName == "")
-                {
-                    g_sFirstName = GetName(oItem);
-                }
-                g_sLastName = GetName(oItem);
-                Line(sAt + " ok t" + IntToString(nTier));
-                return 1;
+                g_sFirstRuned = GetName(oItem) + "|" + IntToString(nRunedBefore);
             }
-            SetItemMaterialType(oItem, nOld);
-            g_nTookNo = g_nTookNo + 1;
-            Line(sAt + " took-no");
         }
-        nTier = nTier - 1;
+        g_nChanged = g_nChanged + 1;
+        if (g_sFirstName == "")
+        {
+            g_sFirstName = GetName(oItem);
+        }
+        g_sLastName = GetName(oItem);
+        Line(sAt + " ok t" + IntToString(nBestTier));
+        return 1;
     }
+    SetItemMaterialType(oItem, nOld);
+    g_nTookNo = g_nTookNo + 1;
+    Line(sAt + " took-no");
 
-    // No material between the target and the current one was taken. Record what the
-    // item actually had, so the reason can be read without a verbose run.
     g_nRefused = g_nRefused + 1;
     if (g_sFirstFail == "")
     {
         g_sFirstFail = GetName(oItem) + " m" + IntToString(nOld)
-            + " cur" + IntToString(nCurrentTier);
+            + " t" + IntToString(nCurrentTier) + " prog" + IntToString(nProg);
     }
     Line(sAt + " fail");
     return 0;
@@ -556,6 +480,23 @@ int UpgradeCreature(object oCreature, int nTargetTier)
         return 0;
     }
 
+    object[] aItems = GetItemsInInventory(oCreature, GET_ITEMS_OPTION_ALL, 0, "", TRUE);
+    int nSize = GetArraySize(aItems);
+
+    // The party stash is shared, so a party member reports the same inventory the
+    // Warden does. Sweeping that once per creature re-examined the whole stash a dozen
+    // times over: one run reported thousands of items evaluated against an inventory of
+    // several hundred. An inventory exactly the size of the Warden's is the stash
+    // again, so it is skipped; a companion's own gear is smaller and is swept normally.
+    if (g_nStashSize < 0)
+    {
+        g_nStashSize = nSize;
+    }
+    else if (nSize == g_nStashSize)
+    {
+        return 0;
+    }
+
     return SweepType(oCreature, nTargetTier, 0);
 }
 
@@ -594,15 +535,17 @@ void main()
     {
         nTargetTier = nForced;
     }
+    int nHeroLevel = CreatureLevel(oHero);
     if (nTargetTier == 0)
     {
-        nTargetTier = TargetTierForLevel(CreatureLevel(oHero));
+        nTargetTier = TierForLevel(nHeroLevel);
     }
 
     g_nChanged = 0;
     g_nWearable = 0;
     g_nAtTop = 0;
-    g_nNoLadder = 0;
+    g_nNoRow = 0;
+    g_nNoTier = 0;
     g_nRefused = 0;
     g_nTookNo = 0;
     g_nRuned = 0;
@@ -612,6 +555,7 @@ void main()
     g_nTier1 = 0; g_nTier2 = 0; g_nTier3 = 0; g_nTier4 = 0; g_nTier5 = 0;
     g_nTier6 = 0; g_nTier7 = 0; g_nTier8 = 0; g_nTier9 = 0; g_nUnknown = 0;
     g_nExamined = 0;
+    g_nStashSize = -1;
     g_nPending = 0;
     g_sFirstName = "";
     g_sLastName = "";
@@ -639,17 +583,19 @@ void main()
         nIndex = nIndex + 1;
     }
 
-    // Two lines: what happened, and where it stands. Everything else was diagnostic
-    // scaffolding for the investigation and is only shown with a negative argument.
+    // Two lines: what happened, and where it stands. The level and target are on the
+    // first line so the calibration can be checked against the vendor at a glance.
     if (g_nChanged > 0)
     {
         DisplayFloatyMessage(oHero, "Upgraded " + IntToString(g_nChanged)
-                + " items to tier " + IntToString(nTargetTier),
+                + " items to tier " + IntToString(nTargetTier)
+                + " (level " + IntToString(nHeroLevel) + ")",
             FLOATY_MESSAGE, 16777215, 6.0);
     }
     else
     {
-        DisplayFloatyMessage(oHero, "Nothing left at tier " + IntToString(nTargetTier),
+        DisplayFloatyMessage(oHero, "Nothing left at tier " + IntToString(nTargetTier)
+                + " (level " + IntToString(nHeroLevel) + ")",
             FLOATY_MESSAGE, 16777215, 6.0);
     }
 
@@ -664,21 +610,24 @@ void main()
             FLOATY_MESSAGE, 16777215, 6.0);
     }
 
+    // Shown every run, not just verbosely: the reasons an item was left alone are what
+    // explains a short total, and they are cheap to read.
+    DisplayFloatyMessage(oHero, "skipped: noRow" + IntToString(g_nNoRow)
+            + " noTier" + IntToString(g_nNoTier)
+            + " atMax" + IntToString(g_nAtTop)
+            + " refused" + IntToString(g_nRefused),
+        FLOATY_MESSAGE, 16777215, 8.0);
+
     if (g_bVerbose == TRUE)
     {
         DisplayFloatyMessage(oHero, "checked" + IntToString(g_nExamined)
-                + " top" + IntToString(g_nAtTop)
-                + " noTier" + IntToString(g_nNoLadder)
-                + " refused" + IntToString(g_nRefused),
+                + " runed" + IntToString(g_nRuned) + " " + g_sFirstRuned,
             FLOATY_MESSAGE, 16777215, 6.0);
         DisplayFloatyMessage(oHero, "t1-" + IntToString(g_nTier1)
                 + " t2-" + IntToString(g_nTier2) + " t3-" + IntToString(g_nTier3)
                 + " t4-" + IntToString(g_nTier4) + " t5-" + IntToString(g_nTier5)
                 + " t6-" + IntToString(g_nTier6) + " t7-" + IntToString(g_nTier7)
                 + " t8-" + IntToString(g_nTier8) + " t9-" + IntToString(g_nTier9),
-            FLOATY_MESSAGE, 16777215, 6.0);
-        DisplayFloatyMessage(oHero, "runed" + IntToString(g_nRuned)
-                + " " + g_sFirstRuned,
             FLOATY_MESSAGE, 16777215, 6.0);
         DisplayFloatyMessage(oHero, "firstFail " + g_sFirstFail,
             FLOATY_MESSAGE, 16777215, 6.0);

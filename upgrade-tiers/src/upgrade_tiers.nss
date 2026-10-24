@@ -107,7 +107,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut65";
+const string BUILD = "ut66";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -240,13 +240,16 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         return 0;
     }
 
-    // A value of zero marks something that is not gear: the Mabari's bite, Shale's
-    // fists, a quest trinket. The dog's weapon carries a real progression row and sits
-    // in the party inventory, so it was reached and raised to Dragonbone, quietly making
-    // a companion's natural attack hit far harder than the designers authored. Creature
-    // weapons are never shown or sold, so value is the only handle a script has on them.
-    if (GetItemValue(oItem) <= 0)
+    // A value of zero was meant to mark something that is not gear - the Mabari's bite
+    // sits in the party inventory and has a real progression row - but a run with this
+    // test kept raising the dog, so the runtime value is evidently not the template's
+    // Cost. Rather than guess again, anything it rejects is now listed with the value
+    // and name it actually reported, so one run settles what the signal is worth.
+    int nValue = GetItemValue(oItem);
+    string sName = GetName(oItem);
+    if (nValue <= 0 || sName == "")
     {
+        Record("? v" + IntToString(nValue) + " " + ItemLabel(oItem));
         return 0;
     }
 

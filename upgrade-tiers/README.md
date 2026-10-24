@@ -104,14 +104,10 @@ row must never be applied to a named piece.
   piece was never made in. The Helm of Honnleath belongs to a family whose row
   reaches Red Steel while the helm itself was authored in Grey Iron; `GetItemUnique`
   is the test.
-- **Items worth nothing, and items the game cannot name, are skipped.** A creature's
-  built-in attack carries a real progression row and can sit in the party inventory -
-  the Mabari's bite is `gen_im_cweapon_dog_party`, cost 0 - and raising it makes a
-  companion hit harder than the designers authored, with nothing in the UI to show it.
-  Two independent tests catch it: `GetItemValue` reporting no price, and `GetName`
-  returning an empty string, because the template's name reference resolves to no
-  string at all. The second is the more direct signal, and it is why that item once
-  printed as a bare `2->7`.
+- **Items worth nothing are skipped.** A creature's built-in attack carries a real
+  progression row and can sit in the party inventory - the Mabari's bite is
+  `gen_im_cweapon_dog_party`, cost 0 - and raising it makes a companion hit harder
+  than the designers authored, with nothing in the UI to show it.
 - **Only the material is written.** `ITEM_RUNE_ENABLED`, the slot capability
   variable that other upgrade mods overwrite, is never touched. Applying a material
   drops the runes installed in the item; that is accepted, because a rune is an item

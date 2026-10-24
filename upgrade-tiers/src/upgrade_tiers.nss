@@ -107,7 +107,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut66";
+const string BUILD = "ut67";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -241,15 +241,10 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     }
 
     // A value of zero was meant to mark something that is not gear - the Mabari's bite
-    // sits in the party inventory and has a real progression row - but a run with this
-    // test kept raising the dog, so the runtime value is evidently not the template's
-    // Cost. Rather than guess again, anything it rejects is now listed with the value
-    // and name it actually reported, so one run settles what the signal is worth.
-    int nValue = GetItemValue(oItem);
-    string sName = GetName(oItem);
-    if (nValue <= 0 || sName == "")
+    // sits in the party inventory and has a real progression row - but a run kept
+    // raising the dog anyway, so the runtime value is evidently not the template's Cost.
+    if (GetItemValue(oItem) <= 0)
     {
-        Record("? v" + IntToString(nValue) + " " + ItemLabel(oItem));
         return 0;
     }
 

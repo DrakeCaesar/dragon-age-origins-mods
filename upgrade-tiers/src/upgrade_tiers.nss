@@ -46,6 +46,11 @@
     whose row reaches Red Steel while the helm itself was authored in Grey Iron, and
     following the row put it at a tier it was never made in.
 
+    Items worth nothing are skipped too. A creature's built-in attack has a real
+    progression row and can sit in the party inventory - the Mabari's bite is one - and
+    raising its tier makes a companion hit harder than the designers authored, with
+    nothing in the UI to show it.
+
     Runes
     -----
     An item's runes are dropped when its material changes. The engine does expose
@@ -102,7 +107,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut62";
+const string BUILD = "ut63";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -231,6 +236,16 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     // hundreds of templates - so following the row there invents tiers the piece was
     // never made in. The Helm of Honnleath is the case that showed this.
     if (GetItemUnique(oItem) == TRUE)
+    {
+        return 0;
+    }
+
+    // A value of zero marks something that is not gear: the Mabari's bite, Shale's
+    // fists, a quest trinket. The dog's weapon carries a real progression row and sits
+    // in the party inventory, so it was reached and raised to Dragonbone, quietly making
+    // a companion's natural attack hit far harder than the designers authored. Creature
+    // weapons are never shown or sold, so value is the only handle a script has on them.
+    if (GetItemValue(oItem) <= 0)
     {
         return 0;
     }

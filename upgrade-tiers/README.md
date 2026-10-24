@@ -13,7 +13,7 @@ party's possession.
 ```
 runscript upgrade_tiers        upgrade to the tier your level allows
 runscript upgrade_tiers 9      force a specific target tier (1-9)
-runscript upgrade_tiers -9     the same, with a list of every item that changed
+runscript upgrade_tiers -9     the same; the sign is ignored
 ```
 
 Covers the Warden's inventory. In Dragon Age that inventory is the shared party
@@ -108,7 +108,7 @@ row must never be applied to a named piece.
   variable that other upgrade mods overwrite, is never touched. Applying a material
   drops the runes installed in the item; that is accepted, because a rune is an item
   the player can install again while a tier they have outgrown cannot be recovered.
-  The count of upgraded items that held runes is reported so the cost is visible.
+  Runed items are not special-cased or counted: the material is the only thing written.
 - **Uninstalled tiers cannot corrupt an item.** After setting the new material the
   script reads it back; if the engine refused the value the original is restored.
   That is how an install without the Awakening tiers behaves.

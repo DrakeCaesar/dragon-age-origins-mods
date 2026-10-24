@@ -1,4 +1,4 @@
-﻿/*
+/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each
@@ -51,43 +51,28 @@
     An item's runes are dropped when its material changes. The engine does expose
     AddItemSubItem (822) and RemoveItemSubItem (823), but neither is declared in
     script.ldf and the compiler refuses to bind to an id it cannot resolve, so
-    restoring them is out of reach from a script. The count of upgraded items that
-    held runes is reported so the cost stays visible. The slot capability variable
-    that other upgrade mods overwrite (ITEM_RUNE_ENABLED) is never written here.
+    restoring them is out of reach from a script. The slot capability variable that
+    other upgrade mods overwrite (ITEM_RUNE_ENABLED) is never written here.
 
     Reading the result
     ------------------
     Floaties are the only channel that renders in the retail build; the on-screen
-    debug text and the GUI log window both produce nothing. A normal run reports two
-    short lines:
+    debug text and the GUI log window both produce nothing. The whole run is collected
+    and shown once, as a single floaty listing every item that changed, one line each,
+    as the tier it was on and the tier it moved to:
 
-        Upgraded 24 items to tier 7
-        All done
-
-    When there is nothing left it says so, and repeating the command produces the
-    same answer, which is the intended end state rather than a fault:
-
-        Nothing left at tier 7
-
-    A negative argument turns on the diagnostics, and its magnitude is the tier:
-        runscript upgrade_tiers -9
-
-    The diagnostics are one floaty listing every item that changed, one line each, as
-    the tier it was on and the tier it moved to:
-
-        Helm of Honnleath 2->5
+        Helm of Honnleath 2->4
         Iron Longsword 4->7
         Dalish Bow 5->7
 
-    A line starting with "!" is the first write the engine refused, with the item's
-    material, tier and progression row, which is the only case worth chasing. The
-    counts stay on the separate "skipped:" line shown on every run.
+    Nothing else is printed. A run with no changes says "nothing to upgrade", because
+    silence is otherwise indistinguishable from a script that never ran.
 
     Usage
     -----
         runscript upgrade_tiers          the tier your level earns
         runscript upgrade_tiers 9        force a target tier (1-9)
-        runscript upgrade_tiers -9       the same, with diagnostics
+        runscript upgrade_tiers -9       the same; the sign is ignored
 
     A single run covers the whole inventory. The engine's own per-script instruction
     limit used to stop this script partway, silently and with no error, which is what
@@ -116,36 +101,14 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut60";
-
-// The display shows only a handful of floaties at once, so the per-operation lines
-// are opt-in. A negative tier argument turns them on: "runscript upgrade_tiers -9"
-// sweeps towards tier 9 and reports every operation.
-int g_bVerbose = FALSE;
+const string BUILD = "ut61";
 
 int g_nChanged = 0;
-int g_nWearable = 0;
-int g_nExamined = 0;
 int g_nStashSize = -1;
-int g_nPending = 0;
 
-// Names of the first and last item raised this run. Only read for items that were
-// actually changed, since a name costs a call and most items are only examined.
-// A repeated first name across runs would mean that item keeps being rewritten.
-string g_sFirstName = "";
-string g_sLastName = "";
+// The run is collected here and shown once at the end: the display holds only a
+// handful of floaties, so a message per item would bury itself.
 string g_sUpdated = "";
-
-int g_nAtTop = 0;
-int g_nNoRow = 0;
-int g_nNoTier = 0;
-int g_nNamed = 0;
-int g_nRefused = 0;
-int g_nTookNo = 0;
-int g_nRuned = 0;
-int g_nStale = 0;
-
-string g_sFirstFail = "";
 
 // ---------------------------------------------------------------- progression lookups
 
@@ -231,43 +194,17 @@ int CreatureLevel(object oCreature)
     return FloatToInt(GetCreatureProperty(oCreature, PROPERTY_SIMPLE_LEVEL));
 }
 
-// The only channel that renders in the retail build is a floaty, and the display
-// keeps just a handful, so a per-item message buries itself. The run is collected
-// into one string instead and shown once at the end.
+// The run is collected here rather than shown as it happens: the display keeps just a
+// handful of floaties, so a message per item buries itself.
 void Record(string sText)
 {
-    if (g_bVerbose == FALSE)
-    {
-        return;
-    }
     g_sUpdated = g_sUpdated + sText + "\n";
-}
-
-// A slot array is not a rune count. GetItemSubItems lists every slot the item has,
-// using OBJECT_INVALID for the empty ones, so only a filled slot holds a rune.
-int FilledSlots(object oItem)
-{
-    object[] aSlots = GetItemSubItems(oItem);
-    int nFilled = 0;
-    int nSize = GetArraySize(aSlots);
-    int nIndex = 0;
-    while (nIndex < nSize)
-    {
-        if (aSlots[nIndex] != OBJECT_INVALID)
-        {
-            nFilled = nFilled + 1;
-        }
-        nIndex = nIndex + 1;
-    }
-    return nFilled;
 }
 
 // Raises one item to the best material its progression row offers within reach of the
 // target tier. Returns 1 when the item changed.
 int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
 {
-    g_nExamined = g_nExamined + 1;
-
     int nOld = GetItemMaterialType(oItem);
 
     // A named item is one the game never generates: it sits in a chest or is handed
@@ -277,7 +214,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     // never made in. The Helm of Honnleath is the case that showed this.
     if (GetItemUnique(oItem) == TRUE)
     {
-        g_nNamed = g_nNamed + 1;
         return 0;
     }
 
@@ -286,7 +222,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     int nProg = GetItemMaterialProgression(oItem);
     if (nProg <= 0)
     {
-        g_nNoRow = g_nNoRow + 1;
         return 0;
     }
 
@@ -297,10 +232,8 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     int nCurrentTier = TierOfMaterial(nOld);
     if (nCurrentTier <= 0)
     {
-        g_nNoTier = g_nNoTier + 1;
         return 0;
     }
-
 
     // Scan the whole row and keep the best material whose tier is within reach. The
     // row is the hard ceiling, so an item that stops at Steel stays at Steel however
@@ -325,52 +258,25 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
 
     if (nBestMaterial == 0 || nBestTier <= nCurrentTier)
     {
-        g_nAtTop = g_nAtTop + 1;
         return 0;
     }
-
-    g_nWearable = g_nWearable + 1;
-    g_nPending = g_nPending + 1;
 
     if (g_nChanged >= MAX_UPDATES)
     {
         return 0;
     }
 
-    // Runes installed in an item are dropped when its material changes. The engine
-    // does expose AddItemSubItem (822) and RemoveItemSubItem (823), but neither is
-    // declared in script.ldf and the compiler refuses to bind to an id it cannot
-    // resolve, so restoring them is out of reach here. The cost is only reported.
-    int nRunedBefore = FilledSlots(oItem);
-
     // Apply the chosen material. The tier was already checked against the row and the
     // level, so there is no walk here; a rejected write only leaves the item as it was.
     SetItemMaterialType(oItem, nBestMaterial);
     if (GetItemMaterialType(oItem) == nBestMaterial)
     {
-        if (nRunedBefore > 0)
-        {
-            g_nRuned = g_nRuned + 1;
-        }
         g_nChanged = g_nChanged + 1;
-        if (g_sFirstName == "")
-        {
-            g_sFirstName = GetName(oItem);
-        }
-        g_sLastName = GetName(oItem);
         Record(GetName(oItem) + " " + IntToString(nCurrentTier)
             + "->" + IntToString(nBestTier));
         return 1;
     }
     SetItemMaterialType(oItem, nOld);
-    g_nTookNo = g_nTookNo + 1;
-
-    g_nRefused = g_nRefused + 1;
-    if (g_sFirstFail == "")
-    {
-        g_sFirstFail = GetName(oItem) + " m" + IntToString(nOld)
-            + " t" + IntToString(nCurrentTier) + " prog" + IntToString(nProg);
-    }
     return 0;
 }
 
@@ -404,7 +310,6 @@ int SweepType(object oCreature, int nTargetTier, int nBaseItemType)
         // re-read if a dead reference actually turns up.
         if (oItem == OBJECT_INVALID)
         {
-            g_nStale = g_nStale + 1;
             nRefreshes = nRefreshes + 1;
             if (nRefreshes > 4)
             {
@@ -478,11 +383,10 @@ void main()
     string sArgument = GetLocalString(GetModule(), "RUNSCRIPT_VAR");
     int nForced = StringToInt(sArgument);
 
-    // A negative argument means verbose, and its magnitude is the tier, so "-9"
-    // sweeps towards tier 9 reporting every operation and "9" sweeps quietly.
+    // The argument is the target tier itself; a negative one means the same thing, so
+    // the "-9" form that used to request verbose output still works.
     if (nForced < 0)
     {
-        g_bVerbose = TRUE;
         nForced = 0 - nForced;
     }
     if (nForced >= 1 && nForced <= MAX_TIER)
@@ -496,21 +400,7 @@ void main()
     }
 
     g_nChanged = 0;
-    g_nWearable = 0;
-    g_nAtTop = 0;
-    g_nNoRow = 0;
-    g_nNoTier = 0;
-    g_nNamed = 0;
-    g_nRefused = 0;
-    g_nTookNo = 0;
-    g_nRuned = 0;
-    g_nStale = 0;
-    g_sFirstFail = "";
-    g_nExamined = 0;
     g_nStashSize = -1;
-    g_nPending = 0;
-    g_sFirstName = "";
-    g_sLastName = "";
     g_sUpdated = "";
 
     // Every inventory is swept: the Warden's, which is the shared party stash and
@@ -536,61 +426,17 @@ void main()
         nIndex = nIndex + 1;
     }
 
-    // Two lines: what happened, and where it stands. The level and target are on the
-    // first line so the calibration can be checked against the vendor at a glance.
-    if (g_nChanged > 0)
+    // One floaty: every item that changed, one line each, as "name oldTier->newTier".
+    // Nothing else is printed - a run with no changes says so, because silence is
+    // otherwise indistinguishable from a script that did not run.
+    if (g_sUpdated == "")
     {
-        DisplayFloatyMessage(oHero, "Upgraded " + IntToString(g_nChanged)
-                + " items to tier " + IntToString(nTargetTier)
-                + " (level " + IntToString(nHeroLevel) + ")",
-            FLOATY_MESSAGE, 16777215, 6.0);
+        DisplayFloatyMessage(oHero, "nothing to upgrade",
+            FLOATY_MESSAGE, 16777215, 10.0);
     }
     else
     {
-        DisplayFloatyMessage(oHero, "Nothing left at tier " + IntToString(nTargetTier)
-                + " (level " + IntToString(nHeroLevel) + ")",
-            FLOATY_MESSAGE, 16777215, 6.0);
-    }
-
-    if (g_nChanged >= MAX_UPDATES)
-    {
-        DisplayFloatyMessage(oHero, "Run again for the next batch",
-            FLOATY_MESSAGE, 16777215, 6.0);
-    }
-    else if (g_nChanged > 0)
-    {
-        DisplayFloatyMessage(oHero, "All done",
-            FLOATY_MESSAGE, 16777215, 6.0);
-    }
-
-    // Shown every run, not just verbosely: the reasons an item was left alone are what
-    // explains a short total, and they are cheap to read.
-    DisplayFloatyMessage(oHero, "skipped: noRow" + IntToString(g_nNoRow)
-            + " noTier" + IntToString(g_nNoTier)
-            + " named" + IntToString(g_nNamed)
-            + " atMax" + IntToString(g_nAtTop)
-            + " refused" + IntToString(g_nRefused),
-        FLOATY_MESSAGE, 16777215, 8.0);
-
-    if (g_bVerbose == TRUE)
-    {
-        if (g_nRuned > 0)
-        {
-            g_sUpdated = g_sUpdated + "runes dropped on " + IntToString(g_nRuned) + "\n";
-        }
-        if (g_sFirstFail != "")
-        {
-            g_sUpdated = g_sUpdated + "! " + g_sFirstFail + "\n";
-        }
-        if (g_sUpdated == "")
-        {
-            DisplayFloatyMessage(oHero, "nothing upgraded",
-                FLOATY_MESSAGE, 16777215, 10.0);
-        }
-        else
-        {
-            DisplayFloatyMessage(oHero, g_sUpdated,
-                FLOATY_MESSAGE, 16777215, 30.0);
-        }
+        DisplayFloatyMessage(oHero, g_sUpdated,
+            FLOATY_MESSAGE, 16777215, 30.0);
     }
 }

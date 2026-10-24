@@ -1,4 +1,4 @@
-/*
+﻿/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each
@@ -72,18 +72,16 @@
     A negative argument turns on the diagnostics, and its magnitude is the tier:
         runscript upgrade_tiers -9
 
-    Every item is then reported as it is handled, and a summary adds how many were
-    already at their ceiling, how many had no usable row, how many were named and left
-    alone, how many writes the engine refused, and how many items sit at each tier:
+    The diagnostics are one floaty listing every item that changed, one line each, as
+    the tier it was on and the tier it moved to:
 
-        7/769 named m2      a hand-placed named item, untouched
-        8/769 noProg m61    no progression row, untouched
-        9/769 noTier m61    material is not on any family ladder
-        10/769 top t3 row7 target7   already at its best, with the row's ceiling and target
-        11/769 set46        about to write material 46
-        11/769 ok t7        it took
-        12/769 took-no      the engine would not store it
-        13/769 fail         nothing in the row was accepted
+        Helm of Honnleath 2->5
+        Iron Longsword 4->7
+        Dalish Bow 5->7
+
+    A line starting with "!" is the first write the engine refused, with the item's
+    material, tier and progression row, which is the only case worth chasing. The
+    counts stay on the separate "skipped:" line shown on every run.
 
     Usage
     -----
@@ -118,7 +116,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut59";
+const string BUILD = "ut60";
 
 // The display shows only a handful of floaties at once, so the per-operation lines
 // are opt-in. A negative tier argument turns them on: "runscript upgrade_tiers -9"
@@ -136,6 +134,7 @@ int g_nPending = 0;
 // A repeated first name across runs would mean that item keeps being rewritten.
 string g_sFirstName = "";
 string g_sLastName = "";
+string g_sUpdated = "";
 
 int g_nAtTop = 0;
 int g_nNoRow = 0;
@@ -145,35 +144,7 @@ int g_nRefused = 0;
 int g_nTookNo = 0;
 int g_nRuned = 0;
 int g_nStale = 0;
-string g_sFirstRuned = "";
 
-// How many items sit at each tier, as our ladder reads them. Items with a material
-// that is not on any ladder are counted as unknown. This is the one measurement that
-// says whether the inventory is genuinely near its ceiling or the ladder misreads it.
-int g_nTier1 = 0;
-int g_nTier2 = 0;
-int g_nTier3 = 0;
-int g_nTier4 = 0;
-int g_nTier5 = 0;
-int g_nTier6 = 0;
-int g_nTier7 = 0;
-int g_nTier8 = 0;
-int g_nTier9 = 0;
-int g_nUnknown = 0;
-
-void CountTier(int nTier)
-{
-    if (nTier == 1) { g_nTier1 = g_nTier1 + 1; }
-    else if (nTier == 2) { g_nTier2 = g_nTier2 + 1; }
-    else if (nTier == 3) { g_nTier3 = g_nTier3 + 1; }
-    else if (nTier == 4) { g_nTier4 = g_nTier4 + 1; }
-    else if (nTier == 5) { g_nTier5 = g_nTier5 + 1; }
-    else if (nTier == 6) { g_nTier6 = g_nTier6 + 1; }
-    else if (nTier == 7) { g_nTier7 = g_nTier7 + 1; }
-    else if (nTier == 8) { g_nTier8 = g_nTier8 + 1; }
-    else if (nTier == 9) { g_nTier9 = g_nTier9 + 1; }
-    else { g_nUnknown = g_nUnknown + 1; }
-}
 string g_sFirstFail = "";
 
 // ---------------------------------------------------------------- progression lookups
@@ -260,16 +231,16 @@ int CreatureLevel(object oCreature)
     return FloatToInt(GetCreatureProperty(oCreature, PROPERTY_SIMPLE_LEVEL));
 }
 
-// One line per operation, naming the item's position in the sweep and the
-// operation itself. Only shown in verbose mode: the display holds about five lines
-// at a time, so a 769 item sweep would bury the summary.
-void Line(string sText)
+// The only channel that renders in the retail build is a floaty, and the display
+// keeps just a handful, so a per-item message buries itself. The run is collected
+// into one string instead and shown once at the end.
+void Record(string sText)
 {
     if (g_bVerbose == FALSE)
     {
         return;
     }
-    DisplayFloatyMessage(GetHero(), BUILD + " " + sText, FLOATY_MESSAGE, 16777215, 4.0);
+    g_sUpdated = g_sUpdated + sText + "\n";
 }
 
 // A slot array is not a rune count. GetItemSubItems lists every slot the item has,
@@ -291,31 +262,12 @@ int FilledSlots(object oItem)
     return nFilled;
 }
 
-// Raises one item, stepping down from the target until the engine accepts the
-// material. Returns 1 when the item changed.
+// Raises one item to the best material its progression row offers within reach of the
+// target tier. Returns 1 when the item changed.
 int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
 {
     g_nExamined = g_nExamined + 1;
 
-    // A heartbeat every hundred items. The display keeps only the most recent
-    // handful of messages, so wherever the messages stop is where the sweep stopped.
-    // The tallies say why nothing changed: no ladder rung, already at target, or a
-    // write the engine refused.
-    if ((g_nExamined == 100 || g_nExamined == 200 || g_nExamined == 300
-        || g_nExamined == 400 || g_nExamined == 500 || g_nExamined == 600
-        || g_nExamined == 700 || g_nExamined == 800) && g_bVerbose == TRUE)
-    {
-        DisplayFloatyMessage(GetHero(), "n" + IntToString(g_nExamined)
-                + " up" + IntToString(g_nChanged)
-                + " top" + IntToString(g_nAtTop)
-                + " none" + IntToString(g_nNoRow)
-                + " fail" + IntToString(g_nRefused)
-                + " rn" + IntToString(g_nRuned)
-                + " st" + IntToString(g_nStale),
-            FLOATY_MESSAGE, 16777215, 4.0);
-    }
-
-    string sAt = IntToString(nIndex) + "/" + IntToString(nCount);
     int nOld = GetItemMaterialType(oItem);
 
     // A named item is one the game never generates: it sits in a chest or is handed
@@ -326,7 +278,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (GetItemUnique(oItem) == TRUE)
     {
         g_nNamed = g_nNamed + 1;
-        Line(sAt + " named m" + IntToString(nOld));
         return 0;
     }
 
@@ -336,8 +287,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (nProg <= 0)
     {
         g_nNoRow = g_nNoRow + 1;
-        g_nUnknown = g_nUnknown + 1;
-        Line(sAt + " noProg m" + IntToString(nOld));
         return 0;
     }
 
@@ -349,19 +298,15 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (nCurrentTier <= 0)
     {
         g_nNoTier = g_nNoTier + 1;
-        g_nUnknown = g_nUnknown + 1;
-        Line(sAt + " noTier m" + IntToString(nOld));
         return 0;
     }
 
-    CountTier(nCurrentTier);
 
     // Scan the whole row and keep the best material whose tier is within reach. The
     // row is the hard ceiling, so an item that stops at Steel stays at Steel however
     // generous the level is; the level only decides how far up the row we may go.
     int nBestTier = 0;
     int nBestMaterial = 0;
-    int nRowMaxTier = 0;
     int nCol = 1;
     while (nCol <= MAT_COLUMNS)
     {
@@ -369,10 +314,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         if (nCandidate != 0)
         {
             int nCandidateTier = TierOfMaterial(nCandidate);
-            if (nCandidateTier > nRowMaxTier)
-            {
-                nRowMaxTier = nCandidateTier;
-            }
             if (nCandidateTier <= nTargetTier && nCandidateTier > nBestTier)
             {
                 nBestTier = nCandidateTier;
@@ -385,8 +326,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (nBestMaterial == 0 || nBestTier <= nCurrentTier)
     {
         g_nAtTop = g_nAtTop + 1;
-        Line(sAt + " top t" + IntToString(nCurrentTier) + " row" + IntToString(nRowMaxTier)
-            + " target" + IntToString(nTargetTier));
         return 0;
     }
 
@@ -406,17 +345,12 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
 
     // Apply the chosen material. The tier was already checked against the row and the
     // level, so there is no walk here; a rejected write only leaves the item as it was.
-    Line(sAt + " set" + IntToString(nBestMaterial));
     SetItemMaterialType(oItem, nBestMaterial);
     if (GetItemMaterialType(oItem) == nBestMaterial)
     {
         if (nRunedBefore > 0)
         {
             g_nRuned = g_nRuned + 1;
-            if (g_sFirstRuned == "")
-            {
-                g_sFirstRuned = GetName(oItem) + "|" + IntToString(nRunedBefore);
-            }
         }
         g_nChanged = g_nChanged + 1;
         if (g_sFirstName == "")
@@ -424,12 +358,12 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
             g_sFirstName = GetName(oItem);
         }
         g_sLastName = GetName(oItem);
-        Line(sAt + " ok t" + IntToString(nBestTier));
+        Record(GetName(oItem) + " " + IntToString(nCurrentTier)
+            + "->" + IntToString(nBestTier));
         return 1;
     }
     SetItemMaterialType(oItem, nOld);
     g_nTookNo = g_nTookNo + 1;
-    Line(sAt + " took-no");
 
     g_nRefused = g_nRefused + 1;
     if (g_sFirstFail == "")
@@ -437,7 +371,6 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         g_sFirstFail = GetName(oItem) + " m" + IntToString(nOld)
             + " t" + IntToString(nCurrentTier) + " prog" + IntToString(nProg);
     }
-    Line(sAt + " fail");
     return 0;
 }
 
@@ -572,15 +505,13 @@ void main()
     g_nTookNo = 0;
     g_nRuned = 0;
     g_nStale = 0;
-    g_sFirstRuned = "";
     g_sFirstFail = "";
-    g_nTier1 = 0; g_nTier2 = 0; g_nTier3 = 0; g_nTier4 = 0; g_nTier5 = 0;
-    g_nTier6 = 0; g_nTier7 = 0; g_nTier8 = 0; g_nTier9 = 0; g_nUnknown = 0;
     g_nExamined = 0;
     g_nStashSize = -1;
     g_nPending = 0;
     g_sFirstName = "";
     g_sLastName = "";
+    g_sUpdated = "";
 
     // Every inventory is swept: the Warden's, which is the shared party stash and
     // holds nearly everything, then each companion's own, then camp storage.
@@ -643,16 +574,23 @@ void main()
 
     if (g_bVerbose == TRUE)
     {
-        DisplayFloatyMessage(oHero, "checked" + IntToString(g_nExamined)
-                + " runed" + IntToString(g_nRuned) + " " + g_sFirstRuned,
-            FLOATY_MESSAGE, 16777215, 6.0);
-        DisplayFloatyMessage(oHero, "t1-" + IntToString(g_nTier1)
-                + " t2-" + IntToString(g_nTier2) + " t3-" + IntToString(g_nTier3)
-                + " t4-" + IntToString(g_nTier4) + " t5-" + IntToString(g_nTier5)
-                + " t6-" + IntToString(g_nTier6) + " t7-" + IntToString(g_nTier7)
-                + " t8-" + IntToString(g_nTier8) + " t9-" + IntToString(g_nTier9),
-            FLOATY_MESSAGE, 16777215, 6.0);
-        DisplayFloatyMessage(oHero, "firstFail " + g_sFirstFail,
-            FLOATY_MESSAGE, 16777215, 6.0);
+        if (g_nRuned > 0)
+        {
+            g_sUpdated = g_sUpdated + "runes dropped on " + IntToString(g_nRuned) + "\n";
+        }
+        if (g_sFirstFail != "")
+        {
+            g_sUpdated = g_sUpdated + "! " + g_sFirstFail + "\n";
+        }
+        if (g_sUpdated == "")
+        {
+            DisplayFloatyMessage(oHero, "nothing upgraded",
+                FLOATY_MESSAGE, 16777215, 10.0);
+        }
+        else
+        {
+            DisplayFloatyMessage(oHero, g_sUpdated,
+                FLOATY_MESSAGE, 16777215, 30.0);
+        }
     }
 }

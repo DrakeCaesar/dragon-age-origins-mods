@@ -13,7 +13,7 @@ party's possession.
 ```
 runscript upgrade_tiers        upgrade to the tier your level allows
 runscript upgrade_tiers 9      force a specific target tier (1-9)
-runscript upgrade_tiers -9     the same, with per item diagnostics
+runscript upgrade_tiers -9     the same, with a list of every item that changed
 ```
 
 Covers the Warden's inventory. In Dragon Age that inventory is the shared party

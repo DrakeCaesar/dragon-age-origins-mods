@@ -66,7 +66,8 @@
         Dalish Bow 5->7
 
     Nothing else is printed. A run with no changes says "nothing to upgrade", because
-    silence is otherwise indistinguishable from a script that never ran.
+    silence is otherwise indistinguishable from a script that never ran. An item whose
+    name is missing shows its template tag instead, so no line loses its label.
 
     Usage
     -----
@@ -101,7 +102,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut61";
+const string BUILD = "ut62";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -201,6 +202,23 @@ void Record(string sText)
     g_sUpdated = g_sUpdated + sText + "\n";
 }
 
+// GetName returns an empty string for a few items, which used to print a line with
+// nothing in front of the tier change. The template tag is always present, so it
+// stands in, and it names the item precisely enough to look it up.
+string ItemLabel(object oItem)
+{
+    string sLabel = GetName(oItem);
+    if (sLabel == "")
+    {
+        sLabel = GetTag(oItem);
+    }
+    if (sLabel == "")
+    {
+        sLabel = "unnamed item";
+    }
+    return sLabel;
+}
+
 // Raises one item to the best material its progression row offers within reach of the
 // target tier. Returns 1 when the item changed.
 int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
@@ -272,7 +290,7 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (GetItemMaterialType(oItem) == nBestMaterial)
     {
         g_nChanged = g_nChanged + 1;
-        Record(GetName(oItem) + " " + IntToString(nCurrentTier)
+        Record(ItemLabel(oItem) + " " + IntToString(nCurrentTier)
             + "->" + IntToString(nBestTier));
         return 1;
     }

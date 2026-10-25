@@ -1,0 +1,27 @@
+﻿diff --git a/scripts/__Packages/UpgradeableItemEntry.as b/scripts/__Packages/UpgradeableItemEntry.as
+index 40490d8..2121000 100644
+--- a/scripts/__Packages/UpgradeableItemEntry.as
++++ b/scripts/__Packages/UpgradeableItemEntry.as
+@@ -3,6 +3,7 @@ class UpgradeableItemEntry extends SharedLibrary.Item
+    var AddBehaviour;
+    var Damaged;
+    var Damaged_mc;
++   var GroupSize = 1;
+    var HostAnchor;
+    var Icon_mc_init;
+    var Image_mc;
+@@ -41,7 +42,13 @@ class UpgradeableItemEntry extends SharedLibrary.Item
+       };
+       this.SmallIcon_mc_init = function()
+       {
+-         MovieUtils.LoadImageFixedSize(this,entry.Icon,32,32);
++         var mcIcon = this;
++         MovieUtils.LoadImageFixedSize(mcIcon,entry.Icon,32,32,function()
++         {
++            entry.RefreshCount();
++         }
++         );
++         entry.AddCountBadge(mcIcon);
+       };
+       if(this.ListItemIndex == 0)
+       {

@@ -1,0 +1,276 @@
+﻿diff --git a/scripts/__Packages/RuneList.as b/scripts/__Packages/RuneList.as
+index 06e6786..bb725f4 100644
+--- a/scripts/__Packages/RuneList.as
++++ b/scripts/__Packages/RuneList.as
+@@ -3,13 +3,20 @@ class RuneList extends GUI.Element
+    var AddBehaviour;
+    var AddChild;
+    var GetChildAtIndex;
++   var GetChildren;
+    var GetNumChildren;
+    var ItemSymbol;
+-   var ListAttributeName;
++   var ListAttributeName = "Party.Backpack";
+    var Margin;
+    var Spacing;
++   var StoredChildHeightDirty;
++   var UpdateLayout;
+    var UpdateScrollValues;
+    var _parent;
++   static var s_aRuneCache = null;
++   static var s_nCachedSize = -1;
++   static var s_nCacheGeneration = 0;
++   static var s_aQualityWords = ["paragon","masterpiece","master","expert","journeyman","novice"];
+    function RuneList()
+    {
+       super();
+@@ -24,6 +31,8 @@ class RuneList extends GUI.Element
+       this.ItemSymbol = "RuneEntry";
+       this.Spacing = 2;
+       this.Margin = 0;
++      this.ListAttributeName = "Party.Backpack";
++      RuneList.s_aRuneCache = null;
+    }
+    function FinalizeInstance()
+    {
+@@ -31,10 +40,10 @@ class RuneList extends GUI.Element
+       var runeList = this;
+       TokenManager.AddTokenObserverWithID(_OBSERVER_ID.ITEMUPGRADE_RUNELIST,"Party.Backpack",function()
+       {
++         RuneList.InvalidateCache();
+          runeList.GenerateList();
+       }
+       );
+-      trace("### finalizing mcRuneList");
+       this._parent.ItemListDropArea_mc.IsDropAcceptable = function(a_ignored)
+       {
+          return true;
+@@ -55,51 +64,176 @@ class RuneList extends GUI.Element
+       trace("### Runelist AcceptDrop! slot " + a_mcRune.nSlotIndex);
+       ItemUpgrade.DetachRune(a_mcRune.nSlotIndex);
+    }
+-   function GenerateList()
++   static function InvalidateCache()
+    {
+-      trace("### (RUNE) GenerateList " + this.ListAttributeName);
+-      var _loc11_ = null;
+-      var _loc12_ = this.GetNumChildren();
+-      var _loc5_ = 0;
+-      var _loc8_ = "GUI.SelectedChar.Equipment.";
+-      var _loc6_;
+-      var _loc9_ = 0;
+-      if(ItemUpgrade.mcSelectedItem)
++      RuneList.s_aRuneCache = null;
++   }
++   static function QualityRank(a_sName)
++   {
++      // Runes come in quality tiers that share a family ("Master Lightning
++      // Rune" and "Novice Lightning Rune"). The word is what the player sees,
++      // and item names are about the only tier information the movie can read:
++      // the tag does not encode it. Ordered best first, so a higher rank sorts
++      // ahead. Longer words are tested first: "masterpiece" contains "master".
++      var sName = a_sName.toLowerCase();
++      var i = 0;
++      while(i < RuneList.s_aQualityWords.length)
+       {
+-         _loc9_ = ExternalCommands.GetValue(ItemUpgrade.mcSelectedItem.TokenName + ".EquippableSlots");
++         if(sName.indexOf(RuneList.s_aQualityWords[i]) != -1)
++         {
++            return RuneList.s_aQualityWords.length - i;
++         }
++         i = i + 1;
+       }
+-      _loc8_ = "Party.Backpack";
+-      var _loc10_ = Number(ExternalCommands.GetNumMembers(_loc8_));
+-      var _loc3_ = 0;
+-      var _loc7_;
+-      var _loc4_;
+-      while(_loc3_ < _loc10_)
+-      {
+-         _loc7_ = _loc8_ + "." + _loc3_;
+-         _loc4_ = ExternalCommands.GetValue(_loc7_ + ".RuneSlotMask");
+-         if(_loc4_ != 0 && (ItemUpgrade.mcSelectedItem == null || _loc4_ & _loc9_))
++      return 0;
++   }
++   static function RuneFamily(a_sName)
++   {
++      // The name with its quality word taken out, so every tier of one kind of
++      // rune sorts next to the others.
++      var sFamily = a_sName.toLowerCase();
++      var i = 0;
++      while(i < RuneList.s_aQualityWords.length)
++      {
++         var sWord = RuneList.s_aQualityWords[i];
++         if(sFamily.indexOf(sWord) != -1)
+          {
+-            _loc6_ = this.GetOrAddChild(_loc5_);
+-            _loc6_.ListItemIndex = _loc3_;
+-            _loc6_.Update();
+-            _loc5_ = _loc5_ + 1;
++            return StringUtils.Trim(StringUtils.ReplaceString(sFamily,sWord,""));
+          }
+-         _loc3_ = _loc3_ + 1;
++         i = i + 1;
++      }
++      return StringUtils.Trim(sFamily);
++   }
++   static function CompareRunes(a, b)
++   {
++      if(a.Family != b.Family)
++      {
++         return (a.Family < b.Family) ? -1 : 1;
++      }
++      if(a.Tier != b.Tier)
++      {
++         return (a.Tier > b.Tier) ? -1 : 1;
+       }
+-      _loc3_ = 0;
+-      while(_loc3_ < this.GetNumChildren())
++      if(a.Name != b.Name)
+       {
+-         if(_loc3_ < _loc5_)
++         return (a.Name < b.Name) ? -1 : 1;
++      }
++      return 0;
++   }
++   function BuildCache()
++   {
++      // One pass over the backpack, grouped by tag so identical runes collapse
++      // into a single row with a count. Reading RuneSlotMask for every item is
++      // unavoidable (no token lists only runes), but doing it once per backpack
++      // change instead of once per selected item is what makes switching items
++      // cheap: a selection only filters this data.
++      var aRunes = new Array();
++      var mapGroups = new Object();
++      var nIndex = 0;
++      var nNumItems = Number(ExternalCommands.GetNumMembers("Party.Backpack"));
++      while(nIndex < nNumItems)
++      {
++         var sToken = "Party.Backpack." + nIndex;
++         var nSlotMask = Number(ExternalCommands.GetValue(sToken + ".RuneSlotMask"));
++         if(nSlotMask != 0)
+          {
+-            MovieUtils.ShowMovie(this.GetChildAtIndex(_loc3_));
++            var sTag = String(ExternalCommands.GetValue(sToken + ".Tag"));
++            var nQuantity = Number(ExternalCommands.GetValue(sToken + ".StackSize"));
++            if(!(nQuantity > 0))
++            {
++               nQuantity = 1;
++            }
++            var nGroup = mapGroups[sTag];
++            if(nGroup == null)
++            {
++               mapGroups[sTag] = aRunes.length;
++               var sName = String(ExternalCommands.GetValue(sToken + ".Name"));
++               aRunes.push({Token:sToken,ListItemIndex:nIndex,SlotMask:nSlotMask,Quantity:nQuantity,Name:sName,Tier:RuneList.QualityRank(sName),Family:RuneList.RuneFamily(sName)});
++            }
++            else
++            {
++               aRunes[nGroup].Quantity = aRunes[nGroup].Quantity + nQuantity;
++            }
+          }
+-         else
++         nIndex = nIndex + 1;
++      }
++      // Insertion sort rather than Array.sort(comparator): the comparator is a
++      // static method, and this keeps the ordering independent of how the
++      // compiler resolves a bare function reference. The list is short.
++      var nSort = 1;
++      while(nSort < aRunes.length)
++      {
++         var runeSort = aRunes[nSort];
++         var j = nSort - 1;
++         while(j >= 0 && RuneList.CompareRunes(runeSort,aRunes[j]) < 0)
+          {
+-            MovieUtils.HideMovie(this.GetChildAtIndex(_loc3_));
++            aRunes[j + 1] = aRunes[j];
++            j = j - 1;
+          }
+-         _loc3_ = _loc3_ + 1;
++         aRunes[j + 1] = runeSort;
++         nSort = nSort + 1;
++      }
++      RuneList.s_nCacheGeneration = RuneList.s_nCacheGeneration + 1;
++      RuneList.s_nCachedSize = nNumItems;
++      RuneList.s_aRuneCache = aRunes;
++      return aRunes;
++   }
++   function GenerateList()
++   {
++      var aRunes = RuneList.s_aRuneCache;
++      if(aRunes == null || Number(ExternalCommands.GetNumMembers("Party.Backpack")) != RuneList.s_nCachedSize)
++      {
++         aRunes = this.BuildCache();
+       }
+-      if(this.GetNumChildren() == 0)
++      var nEquippableSlots = 0;
++      if(ItemUpgrade.mcSelectedItem)
++      {
++         nEquippableSlots = Number(ExternalCommands.GetValue(ItemUpgrade.mcSelectedItem.TokenName + ".EquippableSlots"));
++      }
++      var aChildren = this.GetChildren();
++      var nNumExisting = aChildren.length;
++      var nShown = 0;
++      var nRune = 0;
++      while(nRune < aRunes.length)
++      {
++         var rune = aRunes[nRune];
++         if(ItemUpgrade.mcSelectedItem == null || rune.SlotMask & nEquippableSlots)
++         {
++            var mcEntry;
++            if(nShown < nNumExisting)
++            {
++               mcEntry = aChildren[nShown];
++               if(mcEntry.ListItemIndex != rune.ListItemIndex || mcEntry.m_nRuneCacheGeneration != RuneList.s_nCacheGeneration)
++               {
++                  mcEntry.ListItemIndex = rune.ListItemIndex;
++                  mcEntry.m_nRuneCacheGeneration = RuneList.s_nCacheGeneration;
++                  mcEntry.GroupSize = rune.Quantity;
++                  mcEntry.Update();
++               }
++               else
++               {
++                  mcEntry.GroupSize = rune.Quantity;
++                  mcEntry.RefreshCount();
++               }
++            }
++            else
++            {
++               mcEntry = this.AddChild(this.ItemSymbol,null,{List:this,ListItemIndex:rune.ListItemIndex,GroupSize:rune.Quantity,IsPlotItem:false});
++               mcEntry.m_nRuneCacheGeneration = RuneList.s_nCacheGeneration;
++               aChildren.push(mcEntry);
++            }
++            mcEntry.EnableItem();
++            nShown = nShown + 1;
++         }
++         nRune = nRune + 1;
++      }
++      var nChild = nShown;
++      while(nChild < nNumExisting)
++      {
++         aChildren[nChild].DisableItem();
++         nChild = nChild + 1;
++      }
++      if(nShown == 0)
+       {
+          MovieUtils.ShowMovie(_root.NoRunes_mc);
+       }
+@@ -107,16 +241,10 @@ class RuneList extends GUI.Element
+       {
+          MovieUtils.HideMovie(_root.NoRunes_mc);
+       }
++      this.StoredChildHeightDirty = true;
++      this.UpdateLayout();
+       this.UpdateScrollValues();
+    }
+-   function GetOrAddChild(nChildIndex)
+-   {
+-      if(this.GetNumChildren() > nChildIndex)
+-      {
+-         return this.GetChildAtIndex(nChildIndex);
+-      }
+-      return this.AddChild(this.ItemSymbol,null,{List:this,ListItemIndex:nChildIndex,IsPlotItem:false});
+-   }
+    function OnDraggableItemPickup(a_mcItem)
+    {
+       this._parent.Highlight();

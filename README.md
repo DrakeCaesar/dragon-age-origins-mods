@@ -126,8 +126,10 @@ resources are mounted and one `AddInItem` can only carry one value:
    Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
-2. **UI**, extending `core`, which is where the UI movie resources live. One
-   movie is patched: `levelup` (the screen itself).
+2. **UI**, extending `core`, which is where the UI movie resources live. Four
+   movies are patched: `levelup` (the screen itself), `portraits` (the party
+   bar), `inventory` (attribute rows on the paperdoll) and `itemupgrade` (the
+   rune enchanting screen).
 
 The movie ships with the game as a headerless SWF (`levelup.gfx`) inside the
 GUI packages. Its ActionScript tracks edits in
@@ -213,13 +215,45 @@ ui\levelup_ten.swf      vanilla base, flat 10 floor
 ui\levelup_ftg.swf      FtG base,     starting-value floor
 ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
 ui\portraits.swf        party-bar portraits (no variants)
+ui\itemupgrade.swf      rune enchanting screen (no variants)
 ```
 
-`ui\portraits.swf` is the second patched movie, shipped in both the addin's
+`ui\portraits.swf` is the party-bar movie, shipped in both the addin's
 `core` erf and `packages\core\override\portraits.swf`. It keeps the level-up
 indicator on every party portrait visible at all times: frame 29 is where the
 icon art is fully opaque, so the clip parks there and only plays its animation
 while that creature has a point to spend.
+
+`ui\itemupgrade.swf` is the rune enchanting screen — `itemupgrade.gfx`, the
+item-upgrade window where runes are dragged into an item's slots. Its two lists
+rebuilt themselves from scratch on every change, which made the screen crawl
+once a character carried many weapons and runes. The patches there change how
+the lists are built rather than what they show:
+
+- the rune list scans the backpack once per backpack change and caches the
+  result, so selecting a different item only filters that cache. Before, every
+  selection re-read the rune slot mask of every backpack entry
+- identical runes (same tag) share a row and are ordered by kind, best first:
+  every tier of one kind of rune sits together, Paragon down to Novice. The
+  tier is read from the item name (Paragon / Masterpiece / Master / Expert /
+  Journeyman / Novice), which is what the player sees; the item tag does not
+  carry it, so a rune named in another language sorts as an unknown tier
+- spare weapons and armour in the backpack do the same, but only while they
+  carry no runes: a runed item is unique, so it keeps its own row, and putting
+  a rune in a grouped item moves it out of the group on the next refresh
+- a grouped row shows its count on the icon corner, using the same `StackSize`
+  text symbol the backpack uses, instead of a suffix on the name
+- a rune drop no longer rebuilds the entire item list. That rebuild also called
+  a `RefreshTooltips()` this movie never defines, so the handler aborted before
+  the pane below could update — attaching a rune left the description stale
+- rows that are no longer shown are disabled rather than merely hidden. Hiding
+  a row left it in the layout, so the list's height kept counting it: the
+  scrollbar ran far past the end of the list, because rows from the previous
+  selection were still being measured
+- the mouse wheel hit-tests the list's viewport instead of the list clip. A
+  list's bounds cover the rows scrolled out of the window, so the item list's
+  bounds reached down over the rune list below it and one wheel event scrolled
+  both
 
 Note that the point counter above the list is the engine's own
 (`Attributes.34`, the unspent attribute points), not something this mod seeds.
@@ -342,10 +376,13 @@ src/respec1.nss                     the console script (opens the screen)
 dazip/Manifest.xml                  addin manifest: both AddInItems + the credit
 ui/movies/levelup/patches/*.patch   level-up screen ActionScript changes
 ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's movie
+ui/movies/portraits/patches/*.patch  party-bar level-up indicator
+ui/movies/inventory/patches/*.patch  attribute rows on the inventory paperdoll
+ui/movies/itemupgrade/patches/*.patch  rune enchanting screen: list speed, grouping, scrolling
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
-ui/build-all.ps1                    build all four movies
+ui/build-all.ps1                    build every movie
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts
-build/deploy.ps1                    build all four, package all four, install one
+build/deploy.ps1                    build everything, package it, install one
 build/dazip.ps1                     package (or install/uninstall) a single .dazip
 ref/                                engine API and ability-id references
 ```

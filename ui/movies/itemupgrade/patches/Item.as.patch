@@ -1,0 +1,79 @@
+﻿diff --git a/scripts/__Packages/SharedLibrary/Item.as b/scripts/__Packages/SharedLibrary/Item.as
+index 1fde76d..e841201 100644
+--- a/scripts/__Packages/SharedLibrary/Item.as
++++ b/scripts/__Packages/SharedLibrary/Item.as
+@@ -39,6 +39,7 @@ class SharedLibrary.Item extends GUI.Element
+    var IsIndestructible = false;
+    var IsIrremovable = false;
+    var InfiniteStock = false;
++   var m_aCountBadges;
+    var EquippedBy = "";
+    var CompareToEquipped = true;
+    var CheckRequirements = true;
+@@ -129,6 +130,66 @@ class SharedLibrary.Item extends GUI.Element
+    {
+       return this.enabled;
+    }
++   function AddCountBadge(a_mcIcon)
++   {
++      // The backpack shows a grouped item's count in the corner of its icon;
++      // this is that badge, and the very same "StackSize" text symbol. An entry
++      // draws two states (rest and roll over) and each has its own icon, so the
++      // badge is created next to the icon that just initialised.
++      var mcState = a_mcIcon._parent;
++      if(mcState.Count_mc != null)
++      {
++         return undefined;
++      }
++      if(this.m_aCountBadges == null)
++      {
++         this.m_aCountBadges = new Array();
++      }
++      var mcCount = MovieUtils.CreateMovie(mcState,"StackSize","Count_mc",null);
++      mcCount.m_mcOwnerIcon = a_mcIcon;
++      MovieUtils.HideMovie(mcCount);
++      this.m_aCountBadges.push(mcCount);
++      this.RefreshCount();
++   }
++   function RefreshCount()
++   {
++      if(this.m_aCountBadges == null)
++      {
++         return undefined;
++      }
++      var nQuantity = ItemUtils.GetQuantity(this);
++      var i = 0;
++      while(i < this.m_aCountBadges.length)
++      {
++         var mcCount = this.m_aCountBadges[i];
++         var mcIcon = mcCount.m_mcOwnerIcon;
++         if(nQuantity > 1 && mcIcon != null && mcIcon._width > 0 && mcIcon._height > 0)
++         {
++            mcCount.SetShadow(true);
++            mcCount.SetText("x" + nQuantity);
++            mcCount._xscale = 100;
++            mcCount._yscale = 100;
++            var fNaturalHeight = mcCount._height;
++            if(fNaturalHeight > 0)
++            {
++               // Sized against the icon it sits on, not against the symbol's
++               // authored units: this art is authored at 20x its drawn size, so
++               // a fixed scale would render the badge as a speck.
++               var fScale = 50 * mcIcon._height / fNaturalHeight;
++               mcCount._xscale = fScale;
++               mcCount._yscale = fScale;
++            }
++            mcCount._x = mcIcon._x + mcIcon._width - mcCount._width - 1;
++            mcCount._y = mcIcon._y + mcIcon._height - mcCount._height;
++            MovieUtils.ShowMovie(mcCount);
++         }
++         else
++         {
++            MovieUtils.HideMovie(mcCount);
++         }
++         i = i + 1;
++      }
++   }
+    function CanGift()
+    {
+       var _loc2_ = CreatureUtils.GetApprovalInfo(Number(ExternalCommands.GetValue("GUI.SelectedChar.ID")));

@@ -136,6 +136,33 @@ $checks = @{
         }
         forbidden = @{}
     }
+    # The rune enchanting screen (item upgrade). Its two lists are rebuilt from
+    # scratch on every change, so the patches cache, group and skip work rather
+    # than re-reading every token - and the scroll range comes from the rows
+    # that are actually shown.
+    'itemupgrade' = @{
+        expected = @{
+            'scripts\__Packages\Behaviour\Scrollable.as' = @('var mcHitArea = this.m_mcViewport;', 'if(mcHitArea == null)')
+            'scripts\__Packages\RuneList.as'             = @('static var s_aRuneCache = null', 'function BuildCache()', 'function InvalidateCache()', 'var nGroup = mapGroups', 'mcEntry.RefreshCount()', '.DisableItem();', 'this.UpdateScrollValues()', 'RuneList.s_nCacheGeneration', 'RuneList.s_nCachedSize', 'RuneList.CompareRunes(runeSort', 'function QualityRank(')
+            'scripts\__Packages\RuneEntry.as'            = @('var GroupSize = 1')
+            'scripts\__Packages\UpgradeableItemList.as'  = @('function FillRow(', 'function FindEntry(', 'function HasAnyRune(', 'mapItemGroups', 'nChild < nNumExisting', 'this.StoredChildHeightDirty = true')
+            'scripts\__Packages\ItemUpgrade.as'          = @('function RefreshSelectedItemTooltip()', 'RuneList.InvalidateCache()', 'static function BuildLists()', 'ItemUpgrade.BuildLists();', 'function RefreshAfterRuneChange()', 'function ReselectItem(')
+            'scripts\__Packages\UpgradeableItemEntry.as' = @('entry.AddCountBadge(mcIcon)', 'entry.RefreshCount()')
+            'scripts\__Packages\SharedLibrary\Item.as'   = @('function AddCountBadge(', 'function RefreshCount()', 'Count_mc')
+        }
+        forbidden = @{
+            # RefreshTooltips() is not defined anywhere in this movie; calling it
+            # aborted the drop handler before the pane could update. Nothing may
+            # call it, and no debug scaffolding may ship.
+            'scripts\__Packages\ItemUpgrade.as' = @('mcItemList.RefreshTooltips()', 'Probe')
+            # The wheel used to hit-test the list itself, whose bounds cover the
+            # rows scrolled out of the viewport, so both lists scrolled at once.
+            'scripts\__Packages\Behaviour\Scrollable.as' = @('if(this.hitTest(_root._xmouse,_root._ymouse))', 'Probe')
+            # Debug scaffolding from the "screen comes up empty" investigation.
+            'scripts\__Packages\RuneList.as'            = @('Probe')
+            'scripts\__Packages\UpgradeableItemList.as' = @('Probe')
+        }
+    }
 }
 
 # -------------------------------------------------------------- 1. base copy

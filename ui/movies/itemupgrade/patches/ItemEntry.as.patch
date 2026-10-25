@@ -1,0 +1,20 @@
+﻿diff --git a/scripts/__Packages/SharedLibrary/ItemEntry.as b/scripts/__Packages/SharedLibrary/ItemEntry.as
+index a0d1477..7d3e084 100644
+--- a/scripts/__Packages/SharedLibrary/ItemEntry.as
++++ b/scripts/__Packages/SharedLibrary/ItemEntry.as
+@@ -180,8 +180,14 @@ class SharedLibrary.ItemEntry extends SharedLibrary.DraggableItem
+       };
+       this.SmallIcon_mc_init = function()
+       {
+-         MovieUtils.LoadImageFixedSize(this,sIconName,32,32);
++         var mcIcon = this;
++         MovieUtils.LoadImageFixedSize(mcIcon,sIconName,32,32,function()
++         {
++            self.RefreshCount();
++         }
++         );
+          self.m_mapSmallIconMovieClips[this._target] = this;
++         self.AddCountBadge(mcIcon);
+       };
+       for(var _loc4_ in this.m_mapNameMovieClips)
+       {

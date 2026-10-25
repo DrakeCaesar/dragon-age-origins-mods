@@ -13,6 +13,7 @@
         ui\levelup_ftg.swf      FtG base,     start-value floor
         ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
         ui\portraits.swf        party-bar portraits, no variants
+        ui\itemupgrade.swf      rune enchanting screen, no variants
 
     Each variant is the same patch set with UseStartingValueFloor flipped at
     build time, so the four cannot drift apart. A variant is skipped when its
@@ -67,12 +68,22 @@ foreach ($v in $variants) {
 }
 
 Write-Host ""
-# The portrait movie carries no attribute floor, so it is not a level-up
-# variant: it is built once and ships in every package.
-$portraitBase = Join-Path $here 'movies\portraits\vanilla.swf'
-if (Test-Path -LiteralPath $portraitBase) {
-    Write-Host "-- portraits"
-    $args = @('-NoProfile', '-File', $build, '-Movie', 'portraits', '-Java', $Java)
+# Movies with no attribute floor are not level-up variants: each is built once
+# and ships in every package.
+$soloMovies = @(
+    @{ Movie = 'portraits';   Label = 'party-bar portraits' }
+    @{ Movie = 'itemupgrade'; Label = 'rune enchanting screen' }
+)
+foreach ($solo in $soloMovies) {
+    $soloBase = Join-Path $here "movies\$($solo.Movie)\vanilla.swf"
+    if (-not (Test-Path -LiteralPath $soloBase)) {
+        Write-Host "Skip    : $($solo.Movie) -- $soloBase is missing"
+        Write-Host ""
+        continue
+    }
+
+    Write-Host "-- $($solo.Movie)  ($($solo.Label))"
+    $args = @('-NoProfile', '-File', $build, '-Movie', $solo.Movie, '-Java', $Java)
     if ($FfdecJar) { $args += @('-FfdecJar', $FfdecJar) }
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -83,11 +94,7 @@ if (Test-Path -LiteralPath $portraitBase) {
     } finally {
         $ErrorActionPreference = $prevEap
     }
-    if ($LASTEXITCODE -ne 0) { $failed += 'portraits' }
-    Write-Host ""
-}
-else {
-    Write-Host "Skip    : portraits -- $portraitBase is missing"
+    if ($LASTEXITCODE -ne 0) { $failed += $solo.Movie }
     Write-Host ""
 }
 

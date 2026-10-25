@@ -1,0 +1,22 @@
+﻿diff --git a/scripts/__Packages/Behaviour/Scrollable.as b/scripts/__Packages/Behaviour/Scrollable.as
+index e5193c4..fadc58b 100644
+--- a/scripts/__Packages/Behaviour/Scrollable.as
++++ b/scripts/__Packages/Behaviour/Scrollable.as
+@@ -84,7 +84,16 @@ class Behaviour.Scrollable
+    }
+    function onMouseWheel(a_nDelta)
+    {
+-      if(this.hitTest(_root._xmouse,_root._ymouse))
++      // Test the viewport, not this clip. A scrollable's own bounds cover every
++      // row it holds - including rows scrolled out of view - so the item list's
++      // bounds reach down into the rune list below it and one wheel event used
++      // to scroll both. The viewport is exactly the visible window.
++      var mcHitArea = this.m_mcViewport;
++      if(mcHitArea == null)
++      {
++         mcHitArea = this;
++      }
++      if(mcHitArea.hitTest(_root._xmouse,_root._ymouse))
+       {
+          this.YPosition.ChangeValueBy((- a_nDelta) * 20);
+       }

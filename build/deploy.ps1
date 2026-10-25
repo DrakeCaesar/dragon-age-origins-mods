@@ -269,9 +269,11 @@ if (Test-Path -LiteralPath $staleUi) {
 }
 
 # --------------------------------------------------------- 2. UI addin
-# Two movies are patched: the level-up screen itself, which makes an existing
-# build editable once the screen is open, and the party-bar portrait, whose
-# level-up indicator is kept visible so the screen can be reached at any time.
+# Four movies are patched: the level-up screen itself, which makes an existing
+# build editable once the screen is open; the party-bar portrait, whose
+# level-up indicator is kept visible so the screen can be reached at any time;
+# the inventory paperdoll, which gains the six attribute rows; and the rune
+# enchanting screen, whose lists are rebuilt cheaply and grouped.
 # Which level-up movie to ship is decided by build\ui-base.ps1, which dazip.ps1
 # shares, so both paths must agree.
 $uiBase = Get-DaoLevelupMovie -AddInsXml $addInsXml -Root $root -Floor $AttributeFloor.ToLower()
@@ -286,9 +288,10 @@ else {
 }
 
 $uiMovies = @(
-    @{ Name = 'levelup';   File = $uiFile }
-    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
-    @{ Name = 'inventory'; File = 'ui\inventory.swf' }
+    @{ Name = 'levelup';     File = $uiFile }
+    @{ Name = 'portraits';   File = 'ui\portraits.swf' }
+    @{ Name = 'inventory';   File = 'ui\inventory.swf' }
+    @{ Name = 'itemupgrade'; File = 'ui\itemupgrade.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

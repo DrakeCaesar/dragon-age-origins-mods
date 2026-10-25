@@ -1,0 +1,123 @@
+﻿diff --git a/scripts/__Packages/ItemUpgrade.as b/scripts/__Packages/ItemUpgrade.as
+index a804131..0b37d61 100644
+--- a/scripts/__Packages/ItemUpgrade.as
++++ b/scripts/__Packages/ItemUpgrade.as
+@@ -28,9 +28,25 @@ class ItemUpgrade
+    }
+    static function StartScene()
+    {
++      RuneList.InvalidateCache();
+       SetupInitFunctions();
+       ExternalCommands.PlayGUISound(SoundEvents.ST_OPEN_ITEM_UPGRADES);
+    }
++   static function BuildLists()
++   {
++      // The engine does not hand a token observer its current value, so the
++      // observers registered by the two lists only keep them current: nothing
++      // would build them on open, and the screen would come up empty. The
++      // inventory paperdoll does the same thing with UpdateAttributeRows().
++      if(mcItemList)
++      {
++         mcItemList.GenerateList(true);
++      }
++      if(mcRuneList)
++      {
++         mcRuneList.GenerateList();
++      }
++   }
+    static function FinishScene()
+    {
+       var _loc1_ = Boolean(Number(ExternalCommands.GetValue("GameMode.CloseSceneCompletely")));
+@@ -71,6 +87,7 @@ class ItemUpgrade
+       _root.UpgradeHeader_mc_init = function()
+       {
+          this.SetText(Localization.Strings.LOC_UPGRADE_HEADER);
++         ItemUpgrade.BuildLists();
+       };
+       _root.ItemsHeader_mc_init = function()
+       {
+@@ -131,18 +148,78 @@ class ItemUpgrade
+    static function AttachRune(nRuneID, nSlot)
+    {
+       ExternalCommands.SendMessageArgs(mcSelectedItem.TokenName + ".AttachRuneToItem",nRuneID,nSlot);
+-      mcItemList.GenerateList();
+-      mcItemList.RefreshTooltips();
+-      UpdateUpgradePane();
++      // Only this item changed, and only inside its rune slots: its row in the
++      // item list still draws the same name and icon, so rebuilding every row
++      // - and calling the RefreshTooltips() this movie never defines - was what
++      // made each rune drop stall, and it stopped the pane below from updating.
++      RefreshAfterRuneChange();
+    }
+    static function DetachRune(nRuneSlot)
+    {
+       if(nRuneSlot != undefined)
+       {
+          ExternalCommands.SendMessageArgs(mcSelectedItem.TokenName + ".DetachRuneFromItem",nRuneSlot);
+-         mcItemList.GenerateList();
+-         mcItemList.RefreshTooltips();
+-         UpdateDescriptionText();
++         RefreshAfterRuneChange();
++      }
++   }
++   static function RefreshAfterRuneChange()
++   {
++      // The message that moved the rune is queued, so re-reading on the next
++      // tick describes the backpack as it is after the rune landed rather than
++      // as it was before. The token observer would do this too, but it is not
++      // delivered reliably enough to rely on for the pane's own actions.
++      FuncUtils.CallWithDelay(function()
++      {
++         var sSelectedToken = null;
++         var sSelectedTag = "";
++         if(ItemUpgrade.mcSelectedItem)
++         {
++            sSelectedToken = ItemUpgrade.mcSelectedItem.TokenName;
++            sSelectedTag = String(ItemUpgrade.mcSelectedItem.Tag);
++         }
++         RuneList.InvalidateCache();
++         if(ItemUpgrade.mcItemList)
++         {
++            ItemUpgrade.mcItemList.GenerateList();
++         }
++         if(!ItemUpgrade.ReselectItem(sSelectedToken,sSelectedTag))
++         {
++            if(ItemUpgrade.mcRuneList)
++            {
++               ItemUpgrade.mcRuneList.GenerateList();
++            }
++            ItemUpgrade.UpdateUpgradePane();
++         }
++         ItemUpgrade.RefreshSelectedItemTooltip();
++      }
++      ,0);
++   }
++   static function ReselectItem(a_sToken, a_sTag)
++   {
++      // A rune makes an item unique, so it leaves its group of duplicates when
++      // one is attached: keep editing that item instead of whatever row slid
++      // into its place. Returns false when the selection did not move, so the
++      // caller knows it still has to refresh the pane itself.
++      if(mcItemList == null)
++      {
++         return false;
++      }
++      var mcMatch = mcItemList.FindEntry(a_sToken,a_sTag);
++      if(mcMatch == null || mcMatch == mcSelectedItem)
++      {
++         return false;
++      }
++      mcMatch.Select();
++      return true;
++   }
++   static function RefreshSelectedItemTooltip()
++   {
++      // Only the tooltip of the item being edited can have changed, and only if
++      // it is the one on screen; any other entry rebuilds its own on the next
++      // rollover.
++      if(mcSelectedItem && mcSelectedItem.SetupItemTooltip && MovieUtils.IsMouseWithinMovie(mcSelectedItem))
++      {
++         mcSelectedItem.SetupItemTooltip();
+       }
+    }
+    static function ItemChanged(mcItem)

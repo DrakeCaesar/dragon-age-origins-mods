@@ -11,7 +11,8 @@
         Contents/addins/respec_proto/module/data/respec_proto_module.erf
             the compiled respec1.ncs, so that `runscript respec1` resolves
         Contents/addins/respec_proto/core/data/respec_proto_modcore.erf
-            the patched level-up screen, which only resolves from the core mount
+            the patched UI movies (level-up, portraits, inventory, item upgrade),
+            which only resolve from the core mount
         Contents/packages/*/data/*_package.erf
             empty package stubs, for mod-manager compatibility
 
@@ -209,9 +210,10 @@ $uiErf  = $null
 # Build them first: ui\build-all.ps1  (or ui\build-movie.ps1 per variant).
 $movieFile = 'ui\levelup' + $variantSuffix + '.swf'
 $uiList = @(
-    @{ Name = 'levelup';   File = $movieFile }
-    @{ Name = 'portraits'; File = 'ui\portraits.swf' }
-    @{ Name = 'inventory'; File = 'ui\inventory.swf' }
+    @{ Name = 'levelup';     File = $movieFile }
+    @{ Name = 'portraits';   File = 'ui\portraits.swf' }
+    @{ Name = 'inventory';   File = 'ui\inventory.swf' }
+    @{ Name = 'itemupgrade'; File = 'ui\itemupgrade.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"
@@ -335,6 +337,10 @@ try {
     $portraits = Join-Path $root 'ui\portraits.swf'
     if (Test-Path -LiteralPath $portraits) {
         Write-Host ("  override : " + (Install-DaoMovieOverride -Docs $daDocs -Movie $portraits -Name 'portraits'))
+    }
+    $itemupgrade = Join-Path $root 'ui\itemupgrade.swf'
+    if (Test-Path -LiteralPath $itemupgrade) {
+        Write-Host ("  override : " + (Install-DaoMovieOverride -Docs $daDocs -Movie $itemupgrade -Name 'itemupgrade'))
     }
 } finally {
     $zip.Dispose()

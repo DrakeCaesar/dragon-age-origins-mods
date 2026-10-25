@@ -1,0 +1,12 @@
+﻿diff --git a/scripts/__Packages/RuneEntry.as b/scripts/__Packages/RuneEntry.as
+index ad2322d..62e1b7d 100644
+--- a/scripts/__Packages/RuneEntry.as
++++ b/scripts/__Packages/RuneEntry.as
+@@ -2,6 +2,7 @@ class RuneEntry extends SharedLibrary.ItemEntry
+ {
+    var HostAnchor;
+    var TooltipAnchor;
++   var GroupSize = 1;
+    function RuneEntry()
+    {
+       super();

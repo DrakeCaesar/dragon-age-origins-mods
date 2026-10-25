@@ -1,0 +1,289 @@
+﻿diff --git a/scripts/__Packages/UpgradeableItemList.as b/scripts/__Packages/UpgradeableItemList.as
+index 5be362c..4662879 100644
+--- a/scripts/__Packages/UpgradeableItemList.as
++++ b/scripts/__Packages/UpgradeableItemList.as
+@@ -3,10 +3,12 @@ class UpgradeableItemList extends SharedLibrary.StickyButtonGroup
+    var AddBehaviour;
+    var AddChild;
+    var GetChildAtIndex;
++   var GetChildren;
+    var GetNumChildren;
+    var ItemSymbol;
+    var Margin;
+    var Spacing;
++   var StoredChildHeightDirty;
+    var UpdateLayout;
+    function UpgradeableItemList()
+    {
+@@ -33,102 +35,98 @@ class UpgradeableItemList extends SharedLibrary.StickyButtonGroup
+    }
+    function GenerateList(bSelectTop)
+    {
+-      var _loc19_ = this.GetNumChildren();
+-      var _loc5_ = 0;
+-      var _loc18_ = new Array(0,1,4);
+-      var _loc3_;
+-      var _loc15_;
++      var aChildren = this.GetChildren();
++      var nNumExisting = aChildren.length;
++      var nShown = 0;
++      var sMemberList;
+       if(ExternalCommands.GetValue("Party.InCamp") == 0)
+       {
+-         _loc15_ = "Party.Members";
++         sMemberList = "Party.Members";
+       }
+       else
+       {
+-         _loc15_ = "Party.PoolMembers";
++         sMemberList = "Party.PoolMembers";
+       }
+-      var _loc17_ = ExternalCommands.GetNumMembers(_loc15_);
+-      var _loc8_ = 0;
+-      var _loc7_;
+-      var _loc9_;
+-      var _loc12_;
+-      var _loc13_;
+-      var _loc4_;
+-      var _loc6_;
+-      var _loc14_;
+-      var _loc10_;
+-      while(_loc8_ < _loc17_)
++      var nNumMembers = ExternalCommands.GetNumMembers(sMemberList);
++      var nNumInactive = ExternalCommands.GetNumMembers("GUIItemUpgrade.InactiveWeaponSetItems");
++      var nMember = 0;
++      while(nMember < nNumMembers)
+       {
+-         _loc7_ = _loc15_ + "." + _loc8_;
+-         _loc9_ = ExternalCommands.GetValue(_loc7_ + ".Name");
+-         _loc12_ = ExternalCommands.GetNumber(_loc7_ + ".ID");
+-         _loc13_ = ExternalCommands.GetNumMembers(_loc7_ + ".Equipment");
+-         _loc4_ = 0;
+-         while(_loc4_ < _loc13_)
++         var sMember = sMemberList + "." + nMember;
++         var sMemberName = ExternalCommands.GetValue(sMember + ".Name");
++         var nMemberID = ExternalCommands.GetNumber(sMember + ".ID");
++         var nNumSlots = ExternalCommands.GetNumMembers(sMember + ".Equipment");
++         var nSlot = 0;
++         while(nSlot < nNumSlots)
+          {
+-            _loc6_ = _loc7_ + ".Equipment." + _loc4_;
+-            if(HasRuneSlots(_loc6_))
++            var sSlotToken = sMember + ".Equipment." + nSlot;
++            if(HasRuneSlots(sSlotToken))
+             {
+-               _loc3_ = this.GetOrAddChild(_loc5_);
+-               _loc3_.TokenName = _loc6_;
+-               _loc3_.EquippedBy = _loc9_;
+-               _loc3_.Update();
+-               _loc5_ = _loc5_ + 1;
++               nShown = this.FillRow(aChildren,nShown,sSlotToken,sMemberName);
+             }
+-            _loc4_ = _loc4_ + 1;
++            nSlot = nSlot + 1;
+          }
+-         _loc14_ = ExternalCommands.GetNumMembers("GUIItemUpgrade.InactiveWeaponSetItems");
+-         _loc4_ = 0;
+-         while(_loc4_ < _loc14_)
++         var nInactive = 0;
++         while(nInactive < nNumInactive)
+          {
+-            _loc10_ = ExternalCommands.GetNumber("GUIItemUpgrade.InactiveWeaponSetOwners." + _loc4_ + ".ID");
+-            if(_loc10_ == _loc12_)
++            var nOwnerID = ExternalCommands.GetNumber("GUIItemUpgrade.InactiveWeaponSetOwners." + nInactive + ".ID");
++            if(nOwnerID == nMemberID)
+             {
+-               _loc6_ = "GUIItemUpgrade.InactiveWeaponSetItems." + _loc4_;
+-               if(HasRuneSlots(_loc6_))
++               var sInactiveToken = "GUIItemUpgrade.InactiveWeaponSetItems." + nInactive;
++               if(HasRuneSlots(sInactiveToken))
+                {
+-                  _loc3_ = this.GetOrAddChild(_loc5_);
+-                  _loc3_.TokenName = _loc6_;
+-                  _loc3_.EquippedBy = _loc9_;
+-                  _loc3_.Update();
+-                  _loc5_ = _loc5_ + 1;
++                  nShown = this.FillRow(aChildren,nShown,sInactiveToken,sMemberName);
+                }
+             }
+-            _loc4_ = _loc4_ + 1;
++            nInactive = nInactive + 1;
+          }
+-         _loc8_ = _loc8_ + 1;
++         nMember = nMember + 1;
+       }
+-      _loc15_ = "Party.Backpack";
+-      var _loc16_ = Number(ExternalCommands.GetNumMembers(_loc15_));
+-      _loc8_ = 0;
+-      var _loc11_;
+-      while(_loc8_ < _loc16_)
++      var nNumBackpack = Number(ExternalCommands.GetNumMembers("Party.Backpack"));
++      // Spare copies of the same item are interchangeable only while they carry
++      // no runes, so those are the ones that collapse into one row. An item with
++      // a rune in it stays its own row: the rune makes it unique.
++      var mapItemGroups = new Object();
++      var nIndex = 0;
++      while(nIndex < nNumBackpack)
+       {
+-         _loc11_ = _loc15_ + "." + _loc8_;
+-         if(IsDamaged(_loc11_) || HasRuneSlots(_loc11_))
++         var sItemToken = "Party.Backpack." + nIndex;
++         var bDamaged = IsDamaged(sItemToken);
++         if(bDamaged || HasRuneSlots(sItemToken))
+          {
+-            _loc3_ = this.GetOrAddChild(_loc5_);
+-            _loc3_.TokenName = _loc11_;
+-            _loc3_.Update();
+-            _loc5_ = _loc5_ + 1;
++            var sGroupKey = null;
++            if(!HasAnyRune(sItemToken))
++            {
++               sGroupKey = String(ExternalCommands.GetValue(sItemToken + ".Tag")) + (bDamaged ? "|damaged" : "|");
++            }
++            var nGroupRow = (sGroupKey == null) ? null : mapItemGroups[sGroupKey];
++            var nRow = nShown;
++            if(nGroupRow == null)
++            {
++               if(sGroupKey != null)
++               {
++                  mapItemGroups[sGroupKey] = nRow;
++               }
++               nShown = this.FillRow(aChildren,nShown,sItemToken,"");
++            }
++            else
++            {
++               var mcGroupEntry = aChildren[nGroupRow];
++               mcGroupEntry.GroupSize = mcGroupEntry.GroupSize + 1;
++               mcGroupEntry.RefreshCount();
++            }
+          }
+-         _loc8_ = _loc8_ + 1;
++         nIndex = nIndex + 1;
+       }
+-      _loc8_ = 0;
+-      while(_loc8_ < this.GetNumChildren())
++      var nChild = nShown;
++      while(nChild < nNumExisting)
+       {
+-         if(_loc8_ < _loc5_)
+-         {
+-            MovieUtils.ShowMovie(this.GetChildAtIndex(_loc8_));
+-         }
+-         else
+-         {
+-            MovieUtils.HideMovie(this.GetChildAtIndex(_loc8_));
+-         }
+-         _loc8_ = _loc8_ + 1;
++         aChildren[nChild].DisableItem();
++         nChild = nChild + 1;
+       }
+       if(bSelectTop)
+       {
+-         if(this.GetNumChildren() > 0)
++         if(nShown > 0)
+          {
+             this.GetChildAtIndex(0).Select();
+             ItemUpgrade.ItemChanged(this.GetChildAtIndex(0));
+@@ -138,11 +136,11 @@ class UpgradeableItemList extends SharedLibrary.StickyButtonGroup
+             ItemUpgrade.ItemChanged(null);
+          }
+       }
+-      else if(this.GetNumChildren() == 0)
++      else if(nShown == 0)
+       {
+          ItemUpgrade.ItemChanged(null);
+       }
+-      if(this.GetNumChildren() == 0)
++      if(nShown == 0)
+       {
+          MovieUtils.ShowMovie(_root.NoItems_mc);
+       }
+@@ -150,22 +148,80 @@ class UpgradeableItemList extends SharedLibrary.StickyButtonGroup
+       {
+          MovieUtils.HideMovie(_root.NoItems_mc);
+       }
++      this.StoredChildHeightDirty = true;
+       this.UpdateLayout();
++      this.UpdateScrollValues();
+    }
+-   static function IsDamaged(sToken)
++   function FillRow(a_aChildren, a_nRow, a_sToken, a_sEquippedBy)
+    {
+-      return Number(ExternalCommands.GetValue(sToken + ".Damaged")) == 1;
++      var mcEntry;
++      if(a_nRow < a_aChildren.length)
++      {
++         mcEntry = a_aChildren[a_nRow];
++         mcEntry.TokenName = a_sToken;
++         mcEntry.EquippedBy = a_sEquippedBy;
++         mcEntry.Update();
++      }
++      else
++      {
++         mcEntry = this.AddChild(this.ItemSymbol,null,{List:this,ListItemIndex:a_nRow});
++         mcEntry.TokenName = a_sToken;
++         mcEntry.EquippedBy = a_sEquippedBy;
++         mcEntry.Update();
++      }
++      mcEntry.GroupSize = 1;
++      mcEntry.RefreshCount();
++      mcEntry.EnableItem();
++      a_aChildren[a_nRow] = mcEntry;
++      return a_nRow + 1;
+    }
+-   static function HasRuneSlots(sToken)
++   function FindEntry(a_sToken, a_sTag)
+    {
+-      return Number(ExternalCommands.GetNumMembers(sToken + ".RuneSlots")) > 0;
++      // Finds the row that still holds a given item after a rebuild. Grouping
++      // can move an item out of its row, so fall back to the first row with the
++      // same tag when the exact token is gone.
++      var aChildren = this.GetChildren();
++      var mcTagMatch = null;
++      var nIndex = 0;
++      while(nIndex < aChildren.length)
++      {
++         var mcEntry = aChildren[nIndex];
++         if(mcEntry.enabled)
++         {
++            if(a_sToken != null && mcEntry.TokenName == a_sToken)
++            {
++               return mcEntry;
++            }
++            if(mcTagMatch == null && a_sTag != "" && String(mcEntry.Tag) == a_sTag)
++            {
++               mcTagMatch = mcEntry;
++            }
++         }
++         nIndex = nIndex + 1;
++      }
++      return mcTagMatch;
+    }
+-   function GetOrAddChild(nChildIndex)
++   static function IsDamaged(sToken)
+    {
+-      if(this.GetNumChildren() > nChildIndex)
++      return Number(ExternalCommands.GetValue(sToken + ".Damaged")) == 1;
++   }
++   static function HasAnyRune(sToken)
++   {
++      var nNumSlots = Number(ExternalCommands.GetNumMembers(sToken + ".RuneSlots"));
++      var nSlot = 0;
++      while(nSlot < nNumSlots)
+       {
+-         return this.GetChildAtIndex(nChildIndex);
++         var vRuneID = ExternalCommands.GetValue(sToken + ".RuneSlots." + nSlot + ".ID");
++         if(vRuneID != null && Number(vRuneID) != 0)
++         {
++            return true;
++         }
++         nSlot = nSlot + 1;
+       }
+-      return this.AddChild(this.ItemSymbol,null,{List:this,ListItemIndex:nChildIndex});
++      return false;
++   }
++   static function HasRuneSlots(sToken)
++   {
++      return Number(ExternalCommands.GetNumMembers(sToken + ".RuneSlots")) > 0;
+    }
+ }

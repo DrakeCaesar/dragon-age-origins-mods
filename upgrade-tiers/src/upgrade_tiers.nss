@@ -52,6 +52,10 @@
     nothing in the UI to show it. Its name reference resolves to no string at all, which
     is also why it once printed as a bare "2->7".
 
+    Only weapons, shields and armour are raised. The base item table records what each
+    kind of item is, and anything else - a ring, a gift, a quest trinket that can only be
+    sold - is misc, so it is left alone however good its progression row looks.
+
     Runes
     -----
     An item's runes are dropped when its material changes. The engine does expose
@@ -99,9 +103,10 @@
         Upgraded 24 items to tier 7
         All done
 
-    Only the Warden's inventory is swept. In Dragon Age that inventory is the shared
-    party stash, so it holds nearly everything the party owns; the companions' own
-    inventories and camp storage hold only spares.
+    The shared party stash is read once, because that is what it is: one inventory that
+    every party member reports. Reading it per creature returned the same items again and
+    again and reported each change once per creature. Worn gear is the only thing that
+    differs per creature, so companions are swept with GET_ITEMS_OPTION_EQUIPPED alone.
 */
 
 #include "log_h"
@@ -118,10 +123,9 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut70";
+const string BUILD = "ut73";
 
 int g_nChanged = 0;
-int g_nStashSize = -1;
 
 // A dry run reports what would change and writes nothing, so a run can be checked
 // before it touches the save.
@@ -297,6 +301,19 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
         return 0;
     }
 
+    // Only weapons, shields and armour are raised. The base item table (6) records what
+    // each kind of item is, and everything that is not gear - rings, amulets, gifts,
+    // quick items, quest trinkets - is ITEM_TYPE_MISC. A quest sword that sits in the
+    // "Other" tab and can only be sold is one of those, so it is left alone.
+    //
+    // A table lookup that returns nothing is treated as unknown and allowed through. The
+    // filter is worth having, but not at the cost of silently skipping gear if the table
+    // or the column is named differently than expected.
+    if (GetM2DAInt(TABLE_ITEMS, "Type", GetBaseItemType(oItem)) == ITEM_TYPE_MISC)
+    {
+        return 0;
+    }
+
     // The item's own progression is the authority on what it may become: no row means
     // there is nothing to walk.
     int nProg = GetItemMaterialProgression(oItem);
@@ -370,7 +387,7 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     return 0;
 }
 
-// Sweeps one creature's inventory, one item at a time.
+// Sweeps one inventory, one item at a time.
 //
 // The type filter is deliberately left at 0. GetItemsInInventory's third argument
 // expects a BASE_ITEM_* value, which is a different enumeration from the ITEM_TYPE_*
@@ -378,10 +395,14 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
 // types rather than weapons and armour, which is why whole categories of gear were
 // never touched. The material ladder is the real filter: anything whose material has
 // no tier is skipped for the cost of one call.
-int SweepType(object oCreature, int nTargetTier, int nBaseItemType)
+//
+// The options are passed in because the party inventory is shared: reading it once with
+// GET_ITEMS_OPTION_ALL covers everything the party owns, while each companion's worn gear
+// is only reachable through GET_ITEMS_OPTION_EQUIPPED on that companion.
+int SweepType(object oCreature, int nTargetTier, int nBaseItemType, int nOptions)
 {
     int nChanged = 0;
-    object[] aItems = GetItemsInInventory(oCreature, GET_ITEMS_OPTION_ALL,
+    object[] aItems = GetItemsInInventory(oCreature, nOptions,
         nBaseItemType, "", TRUE);
     int nCount = GetArraySize(aItems);
     int nIndex = 0;
@@ -405,7 +426,7 @@ int SweepType(object oCreature, int nTargetTier, int nBaseItemType)
             {
                 break;
             }
-            aItems = GetItemsInInventory(oCreature, GET_ITEMS_OPTION_ALL,
+            aItems = GetItemsInInventory(oCreature, nOptions,
                 nBaseItemType, "", TRUE);
             nCount = GetArraySize(aItems);
             oItem = aItems[nIndex];
@@ -422,31 +443,13 @@ int SweepType(object oCreature, int nTargetTier, int nBaseItemType)
     return nChanged;
 }
 
-int UpgradeCreature(object oCreature, int nTargetTier)
+int UpgradeCreature(object oCreature, int nTargetTier, int nOptions)
 {
     if (oCreature == OBJECT_INVALID)
     {
         return 0;
     }
-
-    object[] aItems = GetItemsInInventory(oCreature, GET_ITEMS_OPTION_ALL, 0, "", TRUE);
-    int nSize = GetArraySize(aItems);
-
-    // The party stash is shared, so a party member reports the same inventory the
-    // Warden does. Sweeping that once per creature re-examined the whole stash a dozen
-    // times over: one run reported thousands of items evaluated against an inventory of
-    // several hundred. An inventory exactly the size of the Warden's is the stash
-    // again, so it is skipped; a companion's own gear is smaller and is swept normally.
-    if (g_nStashSize < 0)
-    {
-        g_nStashSize = nSize;
-    }
-    else if (nSize == g_nStashSize)
-    {
-        return 0;
-    }
-
-    return SweepType(oCreature, nTargetTier, 0);
+    return SweepType(oCreature, nTargetTier, 0, nOptions);
 }
 
 // ---------------------------------------------------------------- reporting
@@ -494,29 +497,36 @@ void main()
     }
 
     g_nChanged = 0;
-    g_nStashSize = -1;
     g_sUpdated = "";
 
-    // Every inventory is swept: the Warden's, which is the shared party stash and
-    // holds nearly everything, then each companion's own, then camp storage.
-    UpgradeCreature(oHero, nTargetTier);
+    // The party inventory is one shared stash, so it is read exactly once. Reading it per
+    // creature returned the same items over and over and reported each change once per
+    // creature, which is where counts ten times too high came from. Worn gear is the only
+    // thing that differs per creature, and GET_ITEMS_OPTION_EQUIPPED is what reaches it.
+    UpgradeCreature(oHero, nTargetTier, GET_ITEMS_OPTION_ALL);
 
     object[] aParty = GetPartyList();
     int nParty = GetArraySize(aParty);
     int nIndex = 0;
     while (nIndex < nParty)
     {
-        UpgradeCreature(aParty[nIndex], nTargetTier);
+        if (aParty[nIndex] != oHero)
+        {
+            UpgradeCreature(aParty[nIndex], nTargetTier, GET_ITEMS_OPTION_EQUIPPED);
+        }
         nIndex = nIndex + 1;
     }
 
-    // Companions left at camp are not in the party list; their kits live here.
+    // Companions left at camp are not in the party list, but they still have worn gear.
     object[] aPool = GetPartyPoolList();
     int nPool = GetArraySize(aPool);
     nIndex = 0;
     while (nIndex < nPool)
     {
-        UpgradeCreature(aPool[nIndex], nTargetTier);
+        if (aPool[nIndex] != oHero)
+        {
+            UpgradeCreature(aPool[nIndex], nTargetTier, GET_ITEMS_OPTION_EQUIPPED);
+        }
         nIndex = nIndex + 1;
     }
 

@@ -1,4 +1,4 @@
-﻿/*
+/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each

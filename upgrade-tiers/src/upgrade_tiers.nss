@@ -83,11 +83,13 @@
     -----
         runscript upgrade_tiers          the tier your level earns
         runscript upgrade_tiers 9        force a target tier (1-9)
-        runscript upgrade_tiers -9       dry run: report what would change, write nothing
+        runscript upgrade_tiers -        dry run at the tier your level earns
+        runscript upgrade_tiers -9       dry run at a forced tier
 
     A dry run performs the same sweep and prints the same list, but never calls
     SetItemMaterialType. Since it changes nothing it can be repeated freely, which is
-    the way to see the effect of a target tier before committing to it.
+    the way to see the effect of a target tier before committing to it. The leading
+    minus is what selects it, and is read from the text, so "-" on its own works.
 
     A single run covers the whole inventory. The engine's own per-script instruction
     limit used to stop this script partway, silently and with no error, which is what
@@ -116,7 +118,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut69";
+const string BUILD = "ut70";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
@@ -471,9 +473,12 @@ void main()
     string sArgument = GetLocalString(GetModule(), "RUNSCRIPT_VAR");
     int nForced = StringToInt(sArgument);
 
-    // The argument is the target tier. A negative one requests a dry run: the same
-    // sweep and the same report, but nothing is written to the items.
-    if (nForced < 0)
+    // The argument is the target tier, and a leading minus requests a dry run: the same
+    // sweep and the same report, but nothing is written to the items. The minus is read
+    // from the text rather than the parsed number so that "-" alone, or "-0", means "dry
+    // run at the tier your level earns" instead of collapsing into the plain no-argument
+    // case.
+    if (SubString(sArgument, 0, 1) == "-")
     {
         g_bDryRun = TRUE;
         nForced = 0 - nForced;

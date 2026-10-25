@@ -13,12 +13,13 @@ party's possession.
 ```
 runscript upgrade_tiers        upgrade to the tier your level allows
 runscript upgrade_tiers 9      force a specific target tier (1-9)
-runscript upgrade_tiers -9     dry run: report what would change, write nothing
+runscript upgrade_tiers -      dry run at the tier your level allows
+runscript upgrade_tiers -9     dry run at a forced tier
 ```
 
 A dry run sweeps and reports exactly as a real run does, but never applies a
 material, so it can be repeated freely and is the way to preview a target tier
-before committing.
+before committing. The leading minus selects it; `-` on its own is enough.
 
 The report is one floaty listing what changed, with identical items collapsed
 into a count:

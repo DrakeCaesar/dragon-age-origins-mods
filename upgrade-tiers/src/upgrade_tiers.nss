@@ -1,4 +1,4 @@
-﻿/*
+/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each
@@ -99,8 +99,8 @@
 
     Crystals are excluded from every mode but their own. Their quality is not a material
     but a separate template per step, so raising one means creating the better crystal
-    and destroying the old item - which cannot be done in place, and which leaves the
-    replacement in the inventory rather than in the slot the old one occupied.
+    and destroying the old item. A socketed crystal is put back into the slot it came
+    from; one that was loose stays in the pack.
 
     A single run covers the whole inventory. The engine's own per-script instruction
     limit used to stop this script partway, silently and with no error, which is what
@@ -130,7 +130,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut74";
+const string BUILD = "ut75";
 
 int g_nChanged = 0;
 
@@ -394,9 +394,13 @@ object CreateCrystal(int nIndex, object oOwner)
     return OBJECT_INVALID;
 }
 
-// Raises one crystal to the target quality. The replacement is created first so that a
-// failed creation leaves the original in place, and it lands in its owner's inventory
-// rather than in whatever slot the old one occupied.
+// Raises one crystal to the target quality.
+//
+// The replacement is created before the old one is destroyed, so a failed creation leaves
+// the original in place. If the old crystal was socketed, the slot it occupied is recorded
+// first and the replacement is put back into it once the old one is gone - a socketed
+// crystal would otherwise end up loose in the inventory, needing to be slotted by hand.
+// Equipping can still be refused, in which case the new crystal simply stays in the pack.
 int UpgradeCrystal(object oItem, int nTargetQuality, object oOwner)
 {
     int nIndex = CrystalIndex(oItem);
@@ -418,6 +422,7 @@ int UpgradeCrystal(object oItem, int nTargetQuality, object oOwner)
         return 1;
     }
 
+    int nSlot = GetItemEquipSlot(oItem);
     int nFamily = nIndex - nQuality;
     object oNew = CreateCrystal(nFamily + nTargetQuality, oOwner);
     if (oNew == OBJECT_INVALID)
@@ -427,6 +432,12 @@ int UpgradeCrystal(object oItem, int nTargetQuality, object oOwner)
 
     Record(GetName(oNew) + " " + IntToString(nQuality + 1) + "->" + IntToString(nTargetQuality + 1));
     DestroyObject(oItem);
+
+    if (nSlot != INVENTORY_SLOT_INVALID)
+    {
+        EquipItem(oOwner, oNew, nSlot);
+    }
+
     g_nChanged = g_nChanged + 1;
     return 1;
 }

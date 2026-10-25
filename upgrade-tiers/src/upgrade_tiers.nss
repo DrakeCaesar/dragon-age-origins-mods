@@ -1,4 +1,4 @@
-/*
+﻿/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each
@@ -521,11 +521,11 @@ void main()
     if (g_sUpdated == "")
     {
         DisplayFloatyMessage(oHero, "nothing to upgrade",
-            FLOATY_MESSAGE, 16777215, 10.0);
+            FLOATY_MESSAGE, 16777215, 5.0);
     }
     else
     {
         DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
-            FLOATY_MESSAGE, 16777215, 30.0);
+            FLOATY_MESSAGE, 16777215, 10.0);
     }
 }

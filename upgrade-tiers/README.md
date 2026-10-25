@@ -13,7 +13,20 @@ party's possession.
 ```
 runscript upgrade_tiers        upgrade to the tier your level allows
 runscript upgrade_tiers 9      force a specific target tier (1-9)
-runscript upgrade_tiers -9     the same; the sign is ignored
+runscript upgrade_tiers -9     dry run: report what would change, write nothing
+```
+
+A dry run sweeps and reports exactly as a real run does, but never applies a
+material, so it can be repeated freely and is the way to preview a target tier
+before committing.
+
+The report is one floaty listing what changed, with identical items collapsed
+into a count:
+
+```
+4x Magic Staff 1->3
+2x Magic Staff 2->3
+1x Enchanter's Staff 3->7
 ```
 
 Covers the Warden's inventory. In Dragon Age that inventory is the shared party

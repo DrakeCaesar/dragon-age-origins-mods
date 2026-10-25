@@ -64,22 +64,30 @@
     ------------------
     Floaties are the only channel that renders in the retail build; the on-screen
     debug text and the GUI log window both produce nothing. The whole run is collected
-    and shown once, as a single floaty listing every item that changed, one line each,
-    as the tier it was on and the tier it moved to:
+    and shown once, as a single floaty. Identical items collapse into one line with a
+    count, because a stash holds many copies of the same few things:
 
-        Helm of Honnleath 2->4
-        Iron Longsword 4->7
-        Dalish Bow 5->7
+        4x Magic Staff 1->3
+        2x Magic Staff 2->3
+        1x Enchanter's Staff 3->7
+        1x Dalish Bow 5->7
+
+    Each line reads as: how many, the item's name, the tier it was on, the tier it
+    moved to. Entries keep first-seen order, which follows inventory order, so like
+    items usually arrive together rather than being sorted.
 
     Nothing else is printed. A run with no changes says "nothing to upgrade", because
-    silence is otherwise indistinguishable from a script that never ran. An item whose
-    name is missing shows its template tag instead, so no line loses its label.
+    silence is otherwise indistinguishable from a script that never ran.
 
     Usage
     -----
         runscript upgrade_tiers          the tier your level earns
         runscript upgrade_tiers 9        force a target tier (1-9)
-        runscript upgrade_tiers -9       the same; the sign is ignored
+        runscript upgrade_tiers -9       dry run: report what would change, write nothing
+
+    A dry run performs the same sweep and prints the same list, but never calls
+    SetItemMaterialType. Since it changes nothing it can be repeated freely, which is
+    the way to see the effect of a target tier before committing to it.
 
     A single run covers the whole inventory. The engine's own per-script instruction
     limit used to stop this script partway, silently and with no error, which is what
@@ -108,13 +116,18 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut68";
+const string BUILD = "ut69";
 
 int g_nChanged = 0;
 int g_nStashSize = -1;
 
-// The run is collected here and shown once at the end: the display holds only a
-// handful of floaties, so a message per item would bury itself.
+// A dry run reports what would change and writes nothing, so a run can be checked
+// before it touches the save.
+int g_bDryRun = FALSE;
+
+// Every item that would change is appended here as one line, and the duplicates are
+// collapsed when the report is built. A string rather than an array on purpose: no
+// shipped DAO script declares an array at file scope, and a scalar keeps this portable.
 string g_sUpdated = "";
 
 // ---------------------------------------------------------------- progression lookups
@@ -201,11 +214,59 @@ int CreatureLevel(object oCreature)
     return FloatToInt(GetCreatureProperty(oCreature, PROPERTY_SIMPLE_LEVEL));
 }
 
-// The run is collected here rather than shown as it happens: the display keeps just a
-// handful of floaties, so a message per item buries itself.
-void Record(string sText)
+// Adds one item to the report. Duplicates are collapsed later, by BuildReport.
+void Record(string sKey)
 {
-    g_sUpdated = g_sUpdated + sText + "\n";
+    g_sUpdated = g_sUpdated + sKey + "\n";
+}
+
+// Collapses "name old->new" repeats into "Nx name old->new".
+//
+// The duplicates cannot be counted as they arrive without an array, and no shipped DAO
+// script declares one at file scope, so the lines are grouped here instead: take the
+// first line, walk the rest counting matches and keeping the non-matches, then repeat
+// on what is left. A stash holds many copies of a few items, so this runs a handful of
+// passes over a short string rather than one pass per distinct item.
+string BuildReport(string sAll)
+{
+    string sRemaining = sAll;
+    string sReport = "";
+    while (sRemaining != "")
+    {
+        int nLength = GetStringLength(sRemaining);
+        int nEnd = FindSubString(sRemaining, "\n", 0);
+        if (nEnd < 0)
+        {
+            nEnd = nLength;
+        }
+        string sLine = SubString(sRemaining, 0, nEnd);
+
+        string sRest = "";
+        int nCount = 1;
+        int nPos = nEnd + 1;
+        while (nPos < nLength)
+        {
+            int nNext = FindSubString(sRemaining, "\n", nPos);
+            if (nNext < 0)
+            {
+                nNext = nLength;
+            }
+            string sCurrent = SubString(sRemaining, nPos, nNext - nPos);
+            if (sCurrent == sLine)
+            {
+                nCount = nCount + 1;
+            }
+            else if (sCurrent != "")
+            {
+                sRest = sRest + sCurrent + "\n";
+            }
+            nPos = nNext + 1;
+        }
+
+        sReport = sReport + IntToString(nCount) + "x " + sLine + "\n";
+        sRemaining = sRest;
+    }
+    return sReport;
 }
 
 
@@ -281,6 +342,16 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     if (g_nChanged >= MAX_UPDATES)
     {
         return 0;
+    }
+
+    // A dry run stops here: the item is reported but left alone, and the counter that
+    // guards against a runaway loop still advances so the list stays bounded.
+    if (g_bDryRun == TRUE)
+    {
+        g_nChanged = g_nChanged + 1;
+        Record(GetName(oItem) + " " + IntToString(nCurrentTier)
+            + "->" + IntToString(nBestTier));
+        return 1;
     }
 
     // Apply the chosen material. The tier was already checked against the row and the
@@ -400,10 +471,11 @@ void main()
     string sArgument = GetLocalString(GetModule(), "RUNSCRIPT_VAR");
     int nForced = StringToInt(sArgument);
 
-    // The argument is the target tier itself; a negative one means the same thing, so
-    // the "-9" form that used to request verbose output still works.
+    // The argument is the target tier. A negative one requests a dry run: the same
+    // sweep and the same report, but nothing is written to the items.
     if (nForced < 0)
     {
+        g_bDryRun = TRUE;
         nForced = 0 - nForced;
     }
     if (nForced >= 1 && nForced <= MAX_TIER)
@@ -443,9 +515,9 @@ void main()
         nIndex = nIndex + 1;
     }
 
-    // One floaty: every item that changed, one line each, as "name oldTier->newTier".
-    // Nothing else is printed - a run with no changes says so, because silence is
-    // otherwise indistinguishable from a script that did not run.
+    // One floaty, one line per distinct item and tier change, prefixed with how many
+    // of that item were affected. Nothing else is printed - a run with no changes says
+    // so, because silence is otherwise indistinguishable from a script that did not run.
     if (g_sUpdated == "")
     {
         DisplayFloatyMessage(oHero, "nothing to upgrade",
@@ -453,7 +525,7 @@ void main()
     }
     else
     {
-        DisplayFloatyMessage(oHero, g_sUpdated,
+        DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
             FLOATY_MESSAGE, 16777215, 30.0);
     }
 }

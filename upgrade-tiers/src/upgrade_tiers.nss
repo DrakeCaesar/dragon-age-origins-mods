@@ -1,4 +1,4 @@
-/*
+﻿/*
     Upgrade Tiers - raise each item to the highest tier it actually supports
 
     In the base game a store rerolls the tiered variants of what it stocks each
@@ -89,11 +89,18 @@
         runscript upgrade_tiers 9        force a target tier (1-9)
         runscript upgrade_tiers -        dry run at the tier your level earns
         runscript upgrade_tiers -9       dry run at a forced tier
+        runscript upgrade_tiers c3       raise Shale's crystals to quality 3 only
+        runscript upgrade_tiers -c5      dry run of the same
 
     A dry run performs the same sweep and prints the same list, but never calls
     SetItemMaterialType. Since it changes nothing it can be repeated freely, which is
     the way to see the effect of a target tier before committing to it. The leading
     minus is what selects it, and is read from the text, so "-" on its own works.
+
+    Crystals are excluded from every mode but their own. Their quality is not a material
+    but a separate template per step, so raising one means creating the better crystal
+    and destroying the old item - which cannot be done in place, and which leaves the
+    replacement in the inventory rather than in the slot the old one occupied.
 
     A single run covers the whole inventory. The engine's own per-script instruction
     limit used to stop this script partway, silently and with no error, which is what
@@ -123,7 +130,7 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut73";
+const string BUILD = "ut74";
 
 int g_nChanged = 0;
 
@@ -276,6 +283,175 @@ string BuildReport(string sAll)
 }
 
 
+// ---------------------------------------------------------------- Shale's crystals
+
+// A crystal's quality is not a material - it is a separate template for each of the
+// five steps, so raising one means creating the better template and removing the old
+// item. That is the only upgrade in this script that cannot be done in place, and it is
+// why crystals are handled by their own mode instead of being swept with everything else:
+// a normal run leaves them alone entirely.
+//
+// The tag is the only handle on quality: "shl_arm_fir_00" is a Large Chipped Fire Crystal,
+// shl_arm_ or shl_wpn_ the kind, fir/ice/lit/nat/spi the element, and the last two digits
+// the quality from 00 (Chipped) to 04 (Brilliant).
+
+int CrystalIndex(object oItem)
+{
+    string sTag = GetTag(oItem);
+    if (GetStringLength(sTag) != 14)
+    {
+        return -1;
+    }
+    if (SubString(sTag, 0, 4) != "shl_")
+    {
+        return -1;
+    }
+
+    int nKind = 1;
+    string sKind = SubString(sTag, 4, 3);
+    if (sKind == "arm")
+    {
+        nKind = 0;
+    }
+    else if (sKind != "wpn")
+    {
+        return -1;
+    }
+
+    int nElement = -1;
+    string sElement = SubString(sTag, 8, 3);
+    if (sElement == "fir") { nElement = 0; }
+    else if (sElement == "ice") { nElement = 1; }
+    else if (sElement == "lit") { nElement = 2; }
+    else if (sElement == "nat") { nElement = 3; }
+    else if (sElement == "spi") { nElement = 4; }
+    if (nElement < 0)
+    {
+        return -1;
+    }
+
+    return (nKind * 25) + (nElement * 5) + StringToInt(SubString(sTag, 12, 2));
+}
+// Shale's crystals are the one thing here that is not a material: the quality is the
+// template itself, so raising it means creating a better crystal and removing the old
+// one. The name cannot be built at run time - CreateItemOnObject takes a resource and
+// there is no conversion from a string - so every combination is spelled out.
+object CreateCrystal(int nIndex, object oOwner)
+{
+    switch (nIndex)
+    {
+        case  0: return CreateItemOnObject(R"shl_arm_fir_00.uti", oOwner);
+        case  1: return CreateItemOnObject(R"shl_arm_fir_01.uti", oOwner);
+        case  2: return CreateItemOnObject(R"shl_arm_fir_02.uti", oOwner);
+        case  3: return CreateItemOnObject(R"shl_arm_fir_03.uti", oOwner);
+        case  4: return CreateItemOnObject(R"shl_arm_fir_04.uti", oOwner);
+        case  5: return CreateItemOnObject(R"shl_arm_ice_00.uti", oOwner);
+        case  6: return CreateItemOnObject(R"shl_arm_ice_01.uti", oOwner);
+        case  7: return CreateItemOnObject(R"shl_arm_ice_02.uti", oOwner);
+        case  8: return CreateItemOnObject(R"shl_arm_ice_03.uti", oOwner);
+        case  9: return CreateItemOnObject(R"shl_arm_ice_04.uti", oOwner);
+        case 10: return CreateItemOnObject(R"shl_arm_lit_00.uti", oOwner);
+        case 11: return CreateItemOnObject(R"shl_arm_lit_01.uti", oOwner);
+        case 12: return CreateItemOnObject(R"shl_arm_lit_02.uti", oOwner);
+        case 13: return CreateItemOnObject(R"shl_arm_lit_03.uti", oOwner);
+        case 14: return CreateItemOnObject(R"shl_arm_lit_04.uti", oOwner);
+        case 15: return CreateItemOnObject(R"shl_arm_nat_00.uti", oOwner);
+        case 16: return CreateItemOnObject(R"shl_arm_nat_01.uti", oOwner);
+        case 17: return CreateItemOnObject(R"shl_arm_nat_02.uti", oOwner);
+        case 18: return CreateItemOnObject(R"shl_arm_nat_03.uti", oOwner);
+        case 19: return CreateItemOnObject(R"shl_arm_nat_04.uti", oOwner);
+        case 20: return CreateItemOnObject(R"shl_arm_spi_00.uti", oOwner);
+        case 21: return CreateItemOnObject(R"shl_arm_spi_01.uti", oOwner);
+        case 22: return CreateItemOnObject(R"shl_arm_spi_02.uti", oOwner);
+        case 23: return CreateItemOnObject(R"shl_arm_spi_03.uti", oOwner);
+        case 24: return CreateItemOnObject(R"shl_arm_spi_04.uti", oOwner);
+        case 25: return CreateItemOnObject(R"shl_wpn_fir_00.uti", oOwner);
+        case 26: return CreateItemOnObject(R"shl_wpn_fir_01.uti", oOwner);
+        case 27: return CreateItemOnObject(R"shl_wpn_fir_02.uti", oOwner);
+        case 28: return CreateItemOnObject(R"shl_wpn_fir_03.uti", oOwner);
+        case 29: return CreateItemOnObject(R"shl_wpn_fir_04.uti", oOwner);
+        case 30: return CreateItemOnObject(R"shl_wpn_ice_00.uti", oOwner);
+        case 31: return CreateItemOnObject(R"shl_wpn_ice_01.uti", oOwner);
+        case 32: return CreateItemOnObject(R"shl_wpn_ice_02.uti", oOwner);
+        case 33: return CreateItemOnObject(R"shl_wpn_ice_03.uti", oOwner);
+        case 34: return CreateItemOnObject(R"shl_wpn_ice_04.uti", oOwner);
+        case 35: return CreateItemOnObject(R"shl_wpn_lit_00.uti", oOwner);
+        case 36: return CreateItemOnObject(R"shl_wpn_lit_01.uti", oOwner);
+        case 37: return CreateItemOnObject(R"shl_wpn_lit_02.uti", oOwner);
+        case 38: return CreateItemOnObject(R"shl_wpn_lit_03.uti", oOwner);
+        case 39: return CreateItemOnObject(R"shl_wpn_lit_04.uti", oOwner);
+        case 40: return CreateItemOnObject(R"shl_wpn_nat_00.uti", oOwner);
+        case 41: return CreateItemOnObject(R"shl_wpn_nat_01.uti", oOwner);
+        case 42: return CreateItemOnObject(R"shl_wpn_nat_02.uti", oOwner);
+        case 43: return CreateItemOnObject(R"shl_wpn_nat_03.uti", oOwner);
+        case 44: return CreateItemOnObject(R"shl_wpn_nat_04.uti", oOwner);
+        case 45: return CreateItemOnObject(R"shl_wpn_spi_00.uti", oOwner);
+        case 46: return CreateItemOnObject(R"shl_wpn_spi_01.uti", oOwner);
+        case 47: return CreateItemOnObject(R"shl_wpn_spi_02.uti", oOwner);
+        case 48: return CreateItemOnObject(R"shl_wpn_spi_03.uti", oOwner);
+        case 49: return CreateItemOnObject(R"shl_wpn_spi_04.uti", oOwner);
+    }
+    return OBJECT_INVALID;
+}
+
+// Raises one crystal to the target quality. The replacement is created first so that a
+// failed creation leaves the original in place, and it lands in its owner's inventory
+// rather than in whatever slot the old one occupied.
+int UpgradeCrystal(object oItem, int nTargetQuality, object oOwner)
+{
+    int nIndex = CrystalIndex(oItem);
+    if (nIndex < 0)
+    {
+        return 0;
+    }
+
+    int nQuality = nIndex % 5;
+    if (nQuality >= nTargetQuality)
+    {
+        return 0;
+    }
+
+    if (g_bDryRun == TRUE)
+    {
+        Record(GetName(oItem) + " " + IntToString(nQuality + 1) + "->" + IntToString(nTargetQuality + 1));
+        g_nChanged = g_nChanged + 1;
+        return 1;
+    }
+
+    int nFamily = nIndex - nQuality;
+    object oNew = CreateCrystal(nFamily + nTargetQuality, oOwner);
+    if (oNew == OBJECT_INVALID)
+    {
+        return 0;
+    }
+
+    Record(GetName(oNew) + " " + IntToString(nQuality + 1) + "->" + IntToString(nTargetQuality + 1));
+    DestroyObject(oItem);
+    g_nChanged = g_nChanged + 1;
+    return 1;
+}
+
+int SweepCrystals(object oCreature, int nTargetQuality, int nOptions)
+{
+    int nChanged = 0;
+    object[] aItems = GetItemsInInventory(oCreature, nOptions, 0, "", TRUE);
+    int nCount = GetArraySize(aItems);
+    int nIndex = 0;
+    while (nIndex < nCount)
+    {
+        if (g_nChanged >= MAX_UPDATES)
+        {
+            break;
+        }
+        object oItem = aItems[nIndex];
+        if (oItem != OBJECT_INVALID)
+        {
+            nChanged = nChanged + UpgradeCrystal(oItem, nTargetQuality, oCreature);
+        }
+        nIndex = nIndex + 1;
+    }
+    return nChanged;
+}
 // Raises one item to the best material its progression row offers within reach of the
 // target tier. Returns 1 when the item changed.
 int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
@@ -496,8 +672,72 @@ void main()
         nTargetTier = TierForLevel(nHeroLevel);
     }
 
+    // "c1" to "c5" switches to Shale's crystals, and to nothing else: they are a different
+    // kind of upgrade, so mixing them into a material run would either do half a job or
+    // destroy items the player did not ask about. The same leading minus gives a dry run.
+    string sCrystal = sArgument;
+    if (SubString(sCrystal, 0, 1) == "-")
+    {
+        sCrystal = SubString(sCrystal, 1, GetStringLength(sCrystal) - 1);
+    }
+    int nCrystalQuality = 0;
+    if (SubString(sCrystal, 0, 1) == "c" || SubString(sCrystal, 0, 1) == "C")
+    {
+        nCrystalQuality = StringToInt(SubString(sCrystal, 1, 2));
+        if (nCrystalQuality < 1)
+        {
+            nCrystalQuality = 1;
+        }
+        if (nCrystalQuality > 5)
+        {
+            nCrystalQuality = 5;
+        }
+    }
+
     g_nChanged = 0;
     g_sUpdated = "";
+
+    if (nCrystalQuality > 0)
+    {
+        int nTarget = nCrystalQuality - 1;
+        SweepCrystals(oHero, nTarget, GET_ITEMS_OPTION_ALL);
+
+        object[] aCrystalParty = GetPartyList();
+        int nCrystalCount = GetArraySize(aCrystalParty);
+        int nCrystalIndex = 0;
+        while (nCrystalIndex < nCrystalCount)
+        {
+            if (aCrystalParty[nCrystalIndex] != oHero)
+            {
+                SweepCrystals(aCrystalParty[nCrystalIndex], nTarget, GET_ITEMS_OPTION_EQUIPPED);
+            }
+            nCrystalIndex = nCrystalIndex + 1;
+        }
+
+        object[] aCrystalPool = GetPartyPoolList();
+        nCrystalCount = GetArraySize(aCrystalPool);
+        nCrystalIndex = 0;
+        while (nCrystalIndex < nCrystalCount)
+        {
+            if (aCrystalPool[nCrystalIndex] != oHero)
+            {
+                SweepCrystals(aCrystalPool[nCrystalIndex], nTarget, GET_ITEMS_OPTION_EQUIPPED);
+            }
+            nCrystalIndex = nCrystalIndex + 1;
+        }
+
+        if (g_sUpdated == "")
+        {
+            DisplayFloatyMessage(oHero, "nothing to upgrade",
+                FLOATY_MESSAGE, 16777215, 10.0);
+        }
+        else
+        {
+            DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
+                FLOATY_MESSAGE, 16777215, 30.0);
+        }
+        return;
+    }
 
     // The party inventory is one shared stash, so it is read exactly once. Reading it per
     // creature returned the same items over and over and reported each change once per
@@ -541,6 +781,6 @@ void main()
     else
     {
         DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
-            FLOATY_MESSAGE, 16777215, 10.0);
+            FLOATY_MESSAGE, 16777215, 5.0);
     }
 }

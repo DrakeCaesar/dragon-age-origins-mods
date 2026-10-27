@@ -133,6 +133,11 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
+// How many lines of the report a floaty is asked to draw. A floaty that is too long does
+// not appear at all, so this is the only bound on what reaches the screen. Lines only -
+// no character budget - so every line that is shown is shown whole.
+const int MAX_FLOATY_LINES = 50;
+
 // The highest base item type worth asking for. The table runs to 115.
 //
 // The inventory is read one base item type at a time rather than in one call. A single
@@ -292,6 +297,31 @@ string BuildReport(string sAll)
         sRemaining = sRest;
     }
     return sReport;
+}
+
+// Cut the report down to the first MAX_FLOATY_LINES lines.
+//
+// A floaty that is too long is not clipped, it simply does not appear, so the report has to
+// be bounded before it is drawn. Whole lines are dropped, never part of a line: the count is
+// lines, not characters.
+string FloatyReport(string sReport)
+{
+    string sShown = "";
+    int nLines = 0;
+    int nPos = 0;
+    int nLength = GetStringLength(sReport);
+    while (nPos < nLength && nLines < MAX_FLOATY_LINES)
+    {
+        int nEnd = FindSubString(sReport, "\n", nPos);
+        if (nEnd < 0)
+        {
+            nEnd = nLength;
+        }
+        sShown = sShown + SubString(sReport, nPos, nEnd - nPos) + "\n";
+        nLines = nLines + 1;
+        nPos = nEnd + 1;
+    }
+    return sShown;
 }
 
 
@@ -776,7 +806,7 @@ void main()
         }
         else
         {
-            DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
+            DisplayFloatyMessage(oHero, FloatyReport(BuildReport(g_sUpdated)),
                 FLOATY_MESSAGE, 16777215, 30.0);
         }
         return;
@@ -814,8 +844,9 @@ void main()
     }
 
     // One floaty, one line per distinct item and tier change, prefixed with how many
-    // of that item were affected. Nothing else is printed - a run with no changes says
-    // so, because silence is otherwise indistinguishable from a script that did not run.
+    // of that item were affected, cut to what a floaty can draw. Nothing else is printed -
+    // a run with no changes says so, because silence is otherwise indistinguishable from a
+    // script that did not run.
     if (g_sUpdated == "")
     {
         DisplayFloatyMessage(oHero, "nothing to upgrade",
@@ -823,7 +854,7 @@ void main()
     }
     else
     {
-        DisplayFloatyMessage(oHero, BuildReport(g_sUpdated),
+        DisplayFloatyMessage(oHero, FloatyReport(BuildReport(g_sUpdated)),
             FLOATY_MESSAGE, 16777215, 5.0);
     }
 }

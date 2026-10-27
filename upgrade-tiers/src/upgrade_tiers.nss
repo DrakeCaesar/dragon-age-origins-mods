@@ -147,7 +147,7 @@ const int MAX_FLOATY_LINES = 50;
 // full run now finishes.
 const int MAX_BASE_TYPE = 120;
 
-const string BUILD = "ut84";
+const string BUILD = "ut86";
 
 int g_nChanged = 0;
 
@@ -484,10 +484,13 @@ int UpgradeCrystal(object oItem, int nTargetQuality, object oOwner)
     return 1;
 }
 
-int SweepCrystals(object oCreature, int nTargetQuality, int nOptions)
+// Sweeps one list of crystals - one base item type's slice of an inventory. Upgrading a
+// crystal destroys the old one, so the list is fetched again rather than trusted, exactly
+// as the item sweep does.
+int SweepCrystalList(object oCreature, int nTargetQuality, int nBaseItemType, int nOptions)
 {
     int nChanged = 0;
-    object[] aItems = GetItemsInInventory(oCreature, nOptions, 0, "", TRUE);
+    object[] aItems = GetItemsInInventory(oCreature, nOptions, nBaseItemType, "", TRUE);
     int nCount = GetArraySize(aItems);
     int nIndex = 0;
     while (nIndex < nCount)
@@ -497,11 +500,45 @@ int SweepCrystals(object oCreature, int nTargetQuality, int nOptions)
             break;
         }
         object oItem = aItems[nIndex];
-        if (oItem != OBJECT_INVALID)
+        if (oItem == OBJECT_INVALID || IsObjectValid(oItem) == FALSE)
         {
-            nChanged = nChanged + UpgradeCrystal(oItem, nTargetQuality, oCreature);
+            nIndex = nIndex + 1;
+            continue;
         }
+
         nIndex = nIndex + 1;
+        int nResult = UpgradeCrystal(oItem, nTargetQuality, oCreature);
+        nChanged = nChanged + nResult;
+
+        if (nResult > 0)
+        {
+            aItems = GetItemsInInventory(oCreature, nOptions, nBaseItemType, "", TRUE);
+            nCount = GetArraySize(aItems);
+            if (nIndex >= nCount)
+            {
+                break;
+            }
+        }
+    }
+    return nChanged;
+}
+
+// Sweeps one inventory, one base item type at a time, for the same reason the material
+// sweep does: a single read of a large stash returns an array whose entries stop being
+// usable past about a thousand, and reading the whole thing here ended the script before
+// any crystal was reached, so the mode reported nothing at all.
+int SweepCrystals(object oCreature, int nTargetQuality, int nOptions)
+{
+    int nChanged = 0;
+    int nType = 1;
+    while (nType <= MAX_BASE_TYPE)
+    {
+        if (g_nChanged >= MAX_UPDATES)
+        {
+            break;
+        }
+        nChanged = nChanged + SweepCrystalList(oCreature, nTargetQuality, nType, nOptions);
+        nType = nType + 1;
     }
     return nChanged;
 }

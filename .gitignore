@@ -40,9 +40,6 @@ __pycache__/
 # Lyall's DAFix (MIT) cloned here for reference only; never part of this addin.
 DAFix/
 
-# ------------------------------------------------ build output (floatylayer)
-ui/floatylayer.swf
-
 # ------------------------------------------------ session scratch
 # Investigation logs, extracted tables and throwaway scripts used while chasing
 # how enemy level scaling works; nothing here is an input to the build.

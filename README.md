@@ -126,10 +126,10 @@ resources are mounted and one `AddInItem` can only carry one value:
    Calls the engine's `StartCharGen(creature, 1)` — `CHARGEN_MODE_LEVELUP` — to
    open the level-up process directly. The same screen is shared by character
    creation and levelling.
-2. **UI**, extending `core`, which is where the UI movie resources live. Four
+2. **UI**, extending `core`, which is where the UI movie resources live. Five
    movies are patched: `levelup` (the screen itself), `portraits` (the party
-   bar), `inventory` (attribute rows on the paperdoll) and `itemupgrade` (the
-   rune enchanting screen).
+   bar), `inventory` (attribute rows on the paperdoll), `itemupgrade` (the
+   rune enchanting screen) and `floatylayer` (the name above each creature).
 
 The movie ships with the game as a headerless SWF (`levelup.gfx`) inside the
 GUI packages. Its ActionScript tracks edits in
@@ -216,7 +216,18 @@ ui\levelup_ftg.swf      FtG base,     starting-value floor
 ui\levelup_ftg_ten.swf  FtG base,     flat 10 floor
 ui\portraits.swf        party-bar portraits (no variants)
 ui\itemupgrade.swf      rune enchanting screen (no variants)
+ui\floatylayer.swf      creature nameplates (no variants)
 ```
+
+`ui\floatylayer.swf` is the layer that draws the text and health bars above
+creatures. Its patch adds the creature's max health and rank to the name, as in
+`288hp R2 Werewolf`, with the numbers first so a narrow text field cannot clip
+them. The HUD is not given a creature's level — the movie's whole external API
+is 2DA/TLK lookups and movie control — so health is the closest observable stand
+in for "how strong is this enemy", and it changes with party level (the same
+werewolf reads 177hp for a level 1 party and 288hp for a level 24 one). Rank is
+`R1` critter, `R2` normal, `R3` lieutenant, `R4` boss, `R5` elite boss, `R100`
+player. Delete `packages\core\override\floatylayer.swf` to restore vanilla.
 
 `ui\portraits.swf` is the party-bar movie, shipped in both the addin's
 `core` erf and `packages\core\override\portraits.swf`. It keeps the level-up
@@ -379,6 +390,7 @@ ui/movies/levelup_ftg/patches/*.patch  the same changes, ported to FtG UI Mod's 
 ui/movies/portraits/patches/*.patch  party-bar level-up indicator
 ui/movies/inventory/patches/*.patch  attribute rows on the inventory paperdoll
 ui/movies/itemupgrade/patches/*.patch  rune enchanting screen: list speed, grouping, scrolling
+ui/movies/floatylayer/patches/*.patch   creature nameplates: max health and rank in the name
 ui/build-movie.ps1 -Movie <name>     apply patches -> ui\<name>.swf
 ui/build-all.ps1                    build every movie
 ui/make-patches.ps1 -Movie <name>    regenerate patches from the edited scripts

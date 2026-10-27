@@ -163,6 +163,17 @@ $checks = @{
             'scripts\__Packages\UpgradeableItemList.as' = @('Probe')
         }
     }
+    # The HUD name text is the only place a creature's own numbers can be shown:
+    # the GUI has no accessor for creature level or stats, and the engine pushes
+    # only name, current health, max health and rank. Max health is what any
+    # scaling would move, so appending it turns the nameplates into a way to see
+    # whether a creature was scaled and by how much.
+    'floatylayer' = @{
+        expected = @{
+            'scripts\__Packages\Floaty.as' = @('a_nMaxHealth + "hp R" + a_nCreatureRank + " " + a_sName')
+        }
+        forbidden = @{}
+    }
 }
 
 # -------------------------------------------------------------- 1. base copy

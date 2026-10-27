@@ -292,6 +292,7 @@ $uiMovies = @(
     @{ Name = 'portraits';   File = 'ui\portraits.swf' }
     @{ Name = 'inventory';   File = 'ui\inventory.swf' }
     @{ Name = 'itemupgrade'; File = 'ui\itemupgrade.swf' }
+    @{ Name = 'floatylayer'; File = 'ui\floatylayer.swf' }
 )
 if ($NoUi) {
     Write-Host "UI       : skipped (-NoUi)"

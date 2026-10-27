@@ -107,8 +107,11 @@
     made earlier versions appear to do nothing; it has far more than enough headroom
     now, so the work no longer has to be spread over repeated invocations.
 
-        Upgraded 24 items to tier 7
-        All done
+    A second silent stop came from the inventory read itself. GetItemsInInventory on a
+    full stash returned 1032 entries and every entry from about 1024 on was unusable:
+    touching one ended the script mid-run, always at that position and never on a
+    particular item. The inventory is therefore read one base item type at a time, which
+    keeps every list far below that size.
 
     The shared party stash is read once, because that is what it is: one inventory that
     every party member reports. Reading it per creature returned the same items again and
@@ -130,7 +133,16 @@
 // inventory this game can produce.
 const int MAX_UPDATES = 10000;
 
-const string BUILD = "ut75";
+// The highest base item type worth asking for. The table runs to 115.
+//
+// The inventory is read one base item type at a time rather than in one call. A single
+// read of a large stash returned 1032 entries, and every entry from about 1024 on was
+// unusable: touching one ended the script silently, on whatever item happened to sit
+// there. Slicing by type keeps each list far below that - the largest seen is 97 - and a
+// full run now finishes.
+const int MAX_BASE_TYPE = 120;
+
+const string BUILD = "ut84";
 
 int g_nChanged = 0;
 
@@ -574,19 +586,12 @@ int UpgradeItem(object oItem, int nTargetTier, int nIndex, int nCount)
     return 0;
 }
 
-// Sweeps one inventory, one item at a time.
-//
-// The type filter is deliberately left at 0. GetItemsInInventory's third argument
-// expects a BASE_ITEM_* value, which is a different enumeration from the ITEM_TYPE_*
-// constants returned by GetItemType; passing those was selecting arbitrary base item
-// types rather than weapons and armour, which is why whole categories of gear were
-// never touched. The material ladder is the real filter: anything whose material has
-// no tier is skipped for the cost of one call.
+// Sweeps one list of items - one base item type's slice of an inventory.
 //
 // The options are passed in because the party inventory is shared: reading it once with
 // GET_ITEMS_OPTION_ALL covers everything the party owns, while each companion's worn gear
 // is only reachable through GET_ITEMS_OPTION_EQUIPPED on that companion.
-int SweepType(object oCreature, int nTargetTier, int nBaseItemType, int nOptions)
+int SweepList(object oCreature, int nTargetTier, int nBaseItemType, int nOptions)
 {
     int nChanged = 0;
     object[] aItems = GetItemsInInventory(oCreature, nOptions,
@@ -630,13 +635,40 @@ int SweepType(object oCreature, int nTargetTier, int nBaseItemType, int nOptions
     return nChanged;
 }
 
+// Sweeps one inventory, one base item type at a time.
+//
+// Reading the whole inventory in one call returns an array whose entries stop being usable
+// somewhere past a thousand: the run died on entry 1025 of 1032 every time, and on a
+// different item each time, so it is the position and not the item. Asking for one base
+// item type at a time keeps every list well inside that, and it costs nothing extra because
+// the filter is applied by the engine.
+//
+// The type filter is a BASE_ITEM_* value, which is a different enumeration from the
+// ITEM_TYPE_* constants; passing those was selecting arbitrary types rather than weapons
+// and armour, which is why whole categories of gear were once never touched.
+int SweepType(object oCreature, int nTargetTier, int nOptions)
+{
+    int nChanged = 0;
+    int nType = 1;
+    while (nType <= MAX_BASE_TYPE)
+    {
+        if (g_nChanged >= MAX_UPDATES)
+        {
+            break;
+        }
+        nChanged = nChanged + SweepList(oCreature, nTargetTier, nType, nOptions);
+        nType = nType + 1;
+    }
+    return nChanged;
+}
+
 int UpgradeCreature(object oCreature, int nTargetTier, int nOptions)
 {
     if (oCreature == OBJECT_INVALID)
     {
         return 0;
     }
-    return SweepType(oCreature, nTargetTier, 0, nOptions);
+    return SweepType(oCreature, nTargetTier, nOptions);
 }
 
 // ---------------------------------------------------------------- reporting
